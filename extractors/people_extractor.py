@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import pprint
 import time
 import argparse
 import requests
@@ -10,8 +11,8 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import shutil
 
 from extractors.api_fetcher import pco_get
-# Base PCO url
-BASE_URL = "https://api.planningcenteronline.com"
+from utils.response_parsers import safe_get, index_included, get_included_value, return_sorted
+from dataverse.credentials_urls import get_auth_from_env
 
 # How many people to fetch, but still needs to fetch all the people data so doesn't speed it up too much
 DEFAULT_PEOPLE_LIMIT = os.getenv("PCO_PEOPLE_LIMIT", "all")
@@ -19,132 +20,11 @@ DEFAULT_PEOPLE_LIMIT = os.getenv("PCO_PEOPLE_LIMIT", "all")
 # How many to fetch per API pull (usually 100, the max)
 PER_PAGE_DEFAULT = 100
 
-# Global counter variable, temp
-COUNTING = 0
 
 # Person include parameter used in later sections of the code
 INCLUDE_PERSON = "inactive_reason,marital_status,emails,phone_numbers,addresses,households.people"
 # Field data include parameter used in later sections of the code
 INCLUDE_FIELD_DATA = "field_definition,field_option,tab"
-
-
-# Keeps track of how many API calls have been made, for the progress bar
-_API_CALLS = 0
-# Lock helps make sure count is calculate properly
-_API_CALLS_LOCK = threading.Lock()
-
-# Function that increase API call count
-def _api_calls_inc(n: int = 1) -> None:
-    global _API_CALLS
-    # Use the API call lock to keep accurate count
-    with _API_CALLS_LOCK:
-        _API_CALLS += n
-
-# Function that returns API call count
-def _api_calls_get() -> int:
-    # Use lock
-    with _API_CALLS_LOCK:
-        return _API_CALLS
-
-
-# Function that prints progress of how many API calls have been made, how many per second approximately, how long the program has run for
-def _progress_reporter(stop_event: threading.Event, start_t: float, label: str = "API calls") -> None:
-    # Check API progress
-    last = -1
-
-    # Until signal to stop, continue to print progress updates about API calls, every 0.2 seconds
-    while not stop_event.is_set():
-        # Get API call count
-        calls = _api_calls_get()
-
-        # If count is different, print update
-        if calls != last:
-            # Calculate elapsed time
-            elapsed = max(0.0001, time.perf_counter() - start_t)
-            # Calculate call rate
-            rate = calls / elapsed
-            # Get columns for terminal
-            cols = shutil.get_terminal_size((80, 20)).columns
-            # Set bar width
-            bar_w = max(10, min(40, cols - 40))
-            # Calculate next position for progress bar
-            pos = calls % bar_w
-            # Print progress bar
-            bar = ["-"] * bar_w
-            bar[pos] = "#"
-            bar = "".join(bar)
-            # Formulate output message
-            msg = f"\r{label}: {calls:,} | {rate:,.1f}/s | {elapsed:,.1f}s [{bar}]"
-            # Print progress
-            print(msg.ljust(cols - 1), end="", flush=True)
-            last = calls
-        time.sleep(0.2)
-
-    # Get last API call count
-    calls = _api_calls_get()
-    # Calculate time
-    elapsed = time.perf_counter() - start_t
-    # Calculate rate
-    rate = calls / max(elapsed, 0.0001)
-    # Get column
-    cols = shutil.get_terminal_size((80, 20)).columns
-    # Print final progress
-    print(f"\rAPI calls: {calls:,} | {rate:,.1f}/s | {elapsed:,.1f}s".ljust(cols - 1), end="\n", flush=True)
-
-
-# Get authentication from environmental variables
-def get_auth_from_env() -> Tuple[str, str]:
-    # App ID from PCO, also known as Client ID
-    app_id = os.getenv("PCO_APP_ID")
-    # Secret ID from PCO
-    secret = os.getenv("PCO_SECRET")
-    # If app or secret is not set, report error
-    if not app_id or not secret:
-        raise RuntimeError(
-            "Missing env vars. Set:\n"
-            "  PCO_APP_ID=your_app_id\n"
-            "  PCO_SECRET=your_secret\n"
-        )
-    
-    # Return app and secret
-    return app_id, secret
-
-
-# Function to index the includes to make it easier to get certain data later, make it a lil more neat
-def index_included(included: List[Dict[str, Any]]) -> Dict[Tuple[str, str], Dict[str, Any]]:
-    # Outgoing dictionary for includes
-    out: Dict[Tuple[str, str], Dict[str, Any]] = {}
-    
-    # Step through each item of the includes
-    for item in included or []:
-        # Get type of item
-        t = item.get("type")
-
-        # Get ID of item
-        i = item.get("id")
-
-        # If both type and ID exist, then set them as key in includes, and set item as value, to search for later
-        if t and i:
-            out[(t, i)] = item
-    
-    # Return dict of includes
-    return out
-
-# Function is essentially trying to step through the nest JSON dictionary that is returned from the API
-def safe_get(dct: Dict[str, Any], *keys, default=None):
-    # Given dictionary and keys (relationships, field data, etc)
-    cur = dct
-    # Iterate through each key
-    for k in keys:
-        # Check if key is in the current dictionary passed into the function, if it is, set current dictionary to the data of the key, if it is not, return default (usually none)
-        if not isinstance(cur, dict) or k not in cur:
-            return default
-        # Set current dictionary to value of the key
-        cur = cur[k]
-
-    # Return final value found, so last key searched for
-    return cur
-
 
 # Function that prints the header nice and neat
 def print_header(title: str):
@@ -280,84 +160,116 @@ def build_fields_by_person(
     workers: int = 8,
     per_page: int = 100
 ) -> Dict[str, List[Dict[str, Any]]]:
-    # Create dictionary to hold custom fields by each persons ID (str)
+
     fields_by_person: Dict[str, List[Dict[str, Any]]] = {}
 
-    # Parameters to pass through to the API, all the includes in the query
-    params = {"include": INCLUDE_FIELD_DATA}  # field_definition,field_option,tab
-    for payload in pco_iter_pages_threaded("/people/v2/field_data", auth, params=params, per_page=per_page, workers=workers): # Iterate through each page of the custom field data API, using 8 workers to speed up process
-        # Get all data from the data section of the JSON response
+    params = {"include": INCLUDE_FIELD_DATA}
+
+    for payload in pco_iter_pages_threaded(
+        "/people/v2/field_data",
+        auth,
+        params=params,
+        per_page=per_page,
+        workers=workers
+    ):
         data = payload.get("data", []) or []
-        # Get the included section of data from the JSON response and get it indexed
         inc = index_included(payload.get("included", []) or [])
 
-        # Loop to go through the data section of the JSON
         for datum in data:
-            # FieldDatum relates to Person via customizable relationship
-            # Take data and step through the nested JSON data to get the person ID
             cust = safe_get(datum, "relationships", "customizable", "data", default=None)
-            # If cust is not a dictionary, go to next loop iteration 
+
             if not isinstance(cust, dict):
                 continue
-            # If the type of relationship is not a person then go to the next loop iteration, ensures we only get field data related to people
+
             if cust.get("type") != "Person":
                 continue
-            # Get person ID for the field data to associated it with right person
+
             person_id = cust.get("id")
-            # If no person ID, go to next loop
+
             if not person_id:
                 continue
-            
-            # Step through nested JSON to get the value of the custom field, not other wonky data
-            value = safe_get(datum, "attributes", "value")
-            
-            # Get field definition as a dictionary, which includes type and ID
-            fd_ref = safe_get(datum, "relationships", "field_definition", "data", default={}) or {}
-            # Get field defintion type and ID
-            def_type, def_id = fd_ref.get("type"), fd_ref.get("id")
-            # Get the appropriate dield definition included section, to later get name, tab ID, slug, data type, etc of custom field
-            definition = inc.get((def_type, def_id), {}) if def_type and def_id else {}
-            # Store the actual data we desire (data type, tab id, etc) in dictionary for access later
-            def_attr = definition.get("attributes", {}) or {}
 
-            # Get field option as dictionary, for use cases where value is an option, marital status, etc
+            value = safe_get(datum, "attributes", "value")
+
+            # -----------------------------
+            # Field Definition
+            # -----------------------------
+            fd_ref = safe_get(datum, "relationships", "field_definition", "data", default={}) or {}
+            fd_type = fd_ref.get("type")
+            fd_id = fd_ref.get("id")
+
+            field_definition = inc.get((fd_type, fd_id), {}) if fd_type and fd_id else {}
+            fd_attr = field_definition.get("attributes", {}) or {}
+
+            field_definition_name = fd_attr.get("name")
+            field_definition_slug = fd_attr.get("slug")
+            field_definition_data_type = fd_attr.get("data_type")
+
+            # -----------------------------
+            # Tab
+            # First try FieldDatum.relationships.tab
+            # Then fall back to FieldDefinition.relationships.tab
+            # -----------------------------
+            tab_ref = safe_get(datum, "relationships", "tab", "data", default=None)
+
+            if not isinstance(tab_ref, dict):
+                tab_ref = safe_get(field_definition, "relationships", "tab", "data", default=None)
+
+            tab_type = tab_ref.get("type") if isinstance(tab_ref, dict) else None
+            tab_id = tab_ref.get("id") if isinstance(tab_ref, dict) else None
+
+            tab_obj = inc.get((tab_type, tab_id), {}) if tab_type and tab_id else {}
+            tab_attr = tab_obj.get("attributes", {}) or {}
+
+            tab_name = tab_attr.get("name")
+
+            # -----------------------------
+            # Field Option
+            # For dropdown/list fields, this gives the readable selected value
+            # -----------------------------
             opt_ref = safe_get(datum, "relationships", "field_option", "data", default=None)
-            # Inital set option value as none for later if it is true
             option_value = None
-            # If option refernce is a valid dictionary and has type and ID, then go through and parse
+            option_id = None
+
             if isinstance(opt_ref, dict) and opt_ref.get("type") and opt_ref.get("id"):
-                # Get type and ID from option reference
+                option_id = opt_ref.get("id")
                 opt_obj = inc.get((opt_ref.get("type"), opt_ref.get("id")), {})
-                # Go through nested JSON to get actual value of the option (single for marital status)
                 option_value = safe_get(opt_obj, "attributes", "value")
 
-            # Create field row, consisting of the name of the field, corresponding slug, data type, tab ID, value, and if it is and option value, that
             row = {
-                "name": def_attr.get("name"),
-                "slug": def_attr.get("slug"),
-                "data_type": def_attr.get("data_type"),
-                "tab_id": def_attr.get("tab_id"),
+                "field_definition_id": fd_id,
+                "field_definition_name": field_definition_name,
+                "field_definition_slug": field_definition_slug,
+                "field_definition_data_type": field_definition_data_type,
+
+                "tab_id": tab_id,
+                "tab_name": tab_name,
+
                 "value": value,
+                "option_id": option_id,
                 "option_value": option_value,
+
+                # Use this for display because dropdown fields are more readable this way
+                "display_value": option_value if option_value not in (None, "") else value,
             }
 
-            # Append row to appropriate person
             fields_by_person.setdefault(person_id, []).append(row)
 
-    # Sort person's fields by tab ID and name to keep consisent across all people
     for pid, rows in fields_by_person.items():
-        rows.sort(key=lambda r: ((r.get("tab_id") or ""), (r.get("name") or "")))
+        rows.sort(
+            key=lambda r: (
+                r.get("tab_name") or "",
+                r.get("field_definition_name") or ""
+            )
+        )
 
-    # Return dictionary of custom fields
     return fields_by_person
 
 
 # Function to process through person's data and then print out processed data
-def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tuple[str, str], Dict[str, Any]], fields_clean: List[Dict[str, Any]], name_only: bool = False) -> Dict[str, Dict[str, Dict[str, Any]]]:
-    person_data: Dict[str, Dict[str, Dict[str, Any]]] = {}
-    # global variable to temporarily only print 5 people to not get spammed with data lol
-    global COUNTING
-    COUNTING += 1
+def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tuple[str, str], Dict[str, Any]], fields_clean: List[Dict[str, Any]], name_only: bool = False) -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
+    person_data: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+
 
     # Get persons ID from JSON
     person_id = person_obj.get("id")
@@ -370,41 +282,19 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
         print(f"{name} ({person_id})")
         return
 
-    # Fun blob of code where I was trying to figure out how to get included, will clean up later
-    #print(person_obj)
-    #print(inc_index)
-    #print(fields_clean)
-    #os._exit(0)
-    """included = inc_index
-    print(included)
-    if included is not None:
-        types = [d["type"] for d in included]
-        print(types)
-        filtered_types = [d for d in included if d['type'] == 'MaritalStatus']
-        for filtering in filtered_types:
-            value = filtering.get("attributes")
-            true_value = value.get("value")
-            print(true_value)
+    # Resolve included relationship values
+    marital_status = get_included_value(rels, inc_index, "marital_status")
+    inactive_reason = get_included_value(rels, inc_index, "inactive_reason")
 
-        filtered_types = [d for d in included if d['type'] == 'InactiveReason']
-        for filtering in filtered_types:
-            value = filtering.get("attributes")
-            true_value = value.get("value")
-            print(true_value)
+    # Build a core attributes object with the extra resolved values
+    core_attrs = dict(p_attr)
+    core_attrs["marital_status"] = marital_status
+    core_attrs["inactive_reason"] = inactive_reason
 
-        os._exit(0)"""
-
-    # Print person and their core attributes, which are essentially name, gender, birth day, etc.
-    print_header(f"PERSON (ID: {person_id}) — ALL ATTRIBUTES")
     person_data[person_id] = {}
     person_data[person_id]["core_attributes"] = {}
-    for k in sorted(p_attr.keys()):
-        # Get value by key
-        v = p_attr.get(k)
-        person_data[person_id]["core_attributes"][k] = {v}
-
-    print(person_data)
-    #print_kv_sorted(p_attr, indent=2)
+    person_data[person_id]["core_attributes"]["1"] = {}
+    person_data[person_id]["core_attributes"] = return_sorted(core_attrs)
 
     # Get the emails for the person
     emails_refs = safe_get(rels, "emails", "data", default=[]) or []
@@ -414,18 +304,66 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
     addrs_refs = safe_get(rels, "addresses", "data", default=[]) or []
     # Get household data for person
     households_refs = safe_get(rels, "households", "data", default=[]) or []
+    person_data[person_id]["emails"] = {}
+    person_data[person_id]["phones"] = {}
+    person_data[person_id]["addresses"] = {}
+    # Step through the resources
+    counter = 0
+    for idx, ref in enumerate(emails_refs, start=1):
+        counter += 1
+        # Get type and ID of resource
+        t, i = ref.get("type"), ref.get("id")
+        # Get object itself, which contains the values needed
+        obj = inc_index.get((t, i), {})
+        # Get values itself
+        attrs = obj.get("attributes", {}) or {}
+        person_data[person_id]["emails"][counter] = {}
+        
+        for k in sorted(attrs.keys()):
+            # Get value by key
+            v = attrs.get(k)
+            person_data[person_id]["emails"][counter][k] = {v}
 
-    # Print emails, phone number, addresses that were found
-    print_resource_list("EMAILS — ALL ATTRIBUTES", emails_refs, inc_index)
-    print_resource_list("PHONE NUMBERS — ALL ATTRIBUTES", phones_refs, inc_index)
-    print_resource_list("ADDRESSES — ALL ATTRIBUTES", addrs_refs, inc_index)
+    counter = 0
+    for idx, ref in enumerate(phones_refs, start=1):
+        counter += 1
+        # Get type and ID of resource
+        t, i = ref.get("type"), ref.get("id")
+        # Get object itself, which contains the values needed
+        obj = inc_index.get((t, i), {})
+        # Get values itself
+        attrs = obj.get("attributes", {}) or {}
+        person_data[person_id]["phones"][counter] = {}
+        for k in sorted(attrs.keys()):
+            # Get value by key
+            v = attrs.get(k)
+            person_data[person_id]["phones"][counter][k] = {v}
 
-    # Print household data
-    print_header("HOUSEHOLDS — ALL ATTRIBUTES (+ PEOPLE IF INCLUDED)")
+    # Step through the resources
+    counter = 0
+    for idx, ref in enumerate(addrs_refs, start=1):
+        counter += 1
+        # Get type and ID of resource
+        t, i = ref.get("type"), ref.get("id")
+        # Get object itself, which contains the values needed
+        obj = inc_index.get((t, i), {})
+        # Get values itself
+        attrs = obj.get("attributes", {}) or {}
+        person_data[person_id]["addresses"][counter] = {}
+        for k in sorted(attrs.keys()):
+            # Get value by key
+            v = attrs.get(k)
+            person_data[person_id]["addresses"][counter][k] = {v}
+
+    person_data[person_id]["household"] = {}
+    person_data[person_id]["household"]["1"] = {
+        "household_ids": set()
+    }
+
 
     # If no household data, print none
     if not households_refs:
-        print("(none)")
+        person_data[person_id]["household"]["1"]["household_id"] = "N/A"
     
     # If there is household data then step through and print as necessary
     else:
@@ -436,82 +374,61 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
             hh = inc_index.get((ht, hid), {})
             # Get household attributes
             hh_attr = hh.get("attributes", {}) or {}
-            # Print household ID
-            print(f"\n#{idx} Household ({hid})")
-            # Print household data (primary contact, member count, etc)
-            print_kv_sorted(hh_attr, indent=2)
+
+            person_data[person_id]["household"]["1"]["household_id"] = str(hid)
+
+            for k in sorted(hh_attr.keys()):
+                # Get value by key
+                v = hh_attr.get(k)
+                person_data[person_id]["household"]["1"][k] = v
+
 
             # Get household people data (member 1 data, etc)
             hh_people_refs = safe_get(hh, "relationships", "people", "data", default=[]) or []
             
             # If household people data exists then print
             if hh_people_refs:
-                print("  People:")
 
                 # Step through each person in the household
                 for pref in hh_people_refs:
                     # Get type and ID of person
+                    
                     pt, pid = pref.get("type"), pref.get("id")
-                    # Get includes data about the person
-                    pobj = inc_index.get((pt, pid), {})
-                    # Get data about person
-                    pattr = pobj.get("attributes", {}) or {}
-                    # Print person and sorted data about them
-                    print(f"    - Person ({pid})")
-                    for k in sorted(pattr.keys()):
-                        print(f"        {k}: {pattr.get(k)}")
-            else:
-                print("  People: (not included / none)")
+                    person_data[person_id]["household"]["1"]["household_ids"].add(pid)
 
-    # Print custom fields data
-    print_header(f"CUSTOM FIELDS — RESOLVED (TOTAL: {len(fields_clean)})")
+
+    person_data[person_id]["custom_fields"] = {}
+    person_data[person_id]["custom_tabs"] = {}
+    
+    counter = 0
     if not fields_clean:
-        print("(none)")
+        person_data[person_id]["custom_fields"]["1"] = {}
+        person_data[person_id]["custom_fields"]["1"]["field_name"] = "N/A"
     else:
         # Step through each custom field
         for f in fields_clean:
+            counter += 1
+            person_data[person_id]["custom_fields"][counter] = {}
+            person_data[person_id]["custom_tabs"][counter] = {}
             # Get name, data type, slug (name with no spaces), value, and option if it is a dropdown
-            name = f.get("name") or "(Unnamed Field)"
-            dtype = f.get("data_type")
-            slug = f.get("slug")
+            name = f.get("field_definition_name") or "(Unnamed Field)"
+            dtype = f.get("field_definition_data_type")
             value = f.get("value")
-            opt = f.get("option_value")
-            # Print custom field data that was retrieved
-            if opt is not None and opt != "":
-                print(f"- {name} ({dtype}, slug={slug}): {value}  [option={opt}]")
-            else:
-                print(f"- {name} ({dtype}, slug={slug}): {value}")
-    
-    if COUNTING >= 5:
-        os._exit(0)
-    
-    return 
-    
+            tab_name = f.get("tab_name") or "(No Tab)"
+            tab_id = f.get("tab_id") or "(no tab id)"
+            field_id = f.get("field_definition_id") or "(no field definition id)"
 
-# Function that prints out a resource list (emails, phone number, etc)
-def print_resource_list(
-    title: str,
-    refs: List[Dict[str, Any]],
-    inc_index: Dict[Tuple[str, str], Dict[str, Any]],
-):
-    # Print header and if no resources to print, then print none
-    print_header(title)
-    if not refs:
-        print("(none)")
-        return
+            person_data[person_id]["custom_tabs"][counter]["tab_name"] = tab_name
+            person_data[person_id]["custom_tabs"][counter]["tab_id"] = tab_id
 
-    # Step through the resources
-    for idx, ref in enumerate(refs, start=1):
-        # Get type and ID of resource
-        t, i = ref.get("type"), ref.get("id")
-        # Get object itself, which contains the values needed
-        obj = inc_index.get((t, i), {})
-        # Get values itself
-        attrs = obj.get("attributes", {}) or {}
-        # Print number in its section (email #1, email #2), tag and ID
-        print(f"\n#{idx}  {t} ({i})")
-        # Print actual data associated with resource, email address, primary, location, etc.
-        print_kv_sorted(attrs, indent=2)
+            person_data[person_id]["custom_fields"][counter]["field_name"] = name
+            person_data[person_id]["custom_fields"][counter]["field_data_type"] = dtype
+            person_data[person_id]["custom_fields"][counter]["field_value"] = value
+            person_data[person_id]["custom_fields"][counter]["field_tab_id"] = tab_id
+            person_data[person_id]["custom_fields"][counter]["field_tab_name"] = tab_name
+            person_data[person_id]["custom_fields"][counter]["field_id"] = field_id
+    
+    return person_data
 
 
 def fetch_person_with_includes(session: requests.Session, person_id: str, auth: Tuple[str, str]) -> Dict[str, Any]:
@@ -537,16 +454,11 @@ def _parse_limit(value: str) -> Optional[int]:
         raise ValueError("limit must be >= 1 or 'all'")
     return n
 
-def extraction() -> Dict[str, Dict[str, Dict[str, Any]]]:
-    tables = Dict[str, Dict[str, Dict[str, Any]]]
+def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
+    tables: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+    processing: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
     # Record time to see how long it takes to get all the data
     t0 = time.perf_counter()
-    # Create and start the stop progress reporter thread
-    _stop_progress = threading.Event()
-    # This thread will print progress updates about API calls every 0.2 seconds until we signal it to stop
-    _progress_thread = threading.Thread(target=_progress_reporter, args=(_stop_progress, t0), daemon=True)
-    # Start the progress reporter thread before we begin making API calls, so it can track them from the start
-    _progress_thread.start()
     # Keep track of how many people we've processed, to report at the end
     count = 0
 
@@ -596,8 +508,6 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Any]]]:
                 # Index the includes section for later
                 inc_index = index_included(payload.get("included", []) or [])
 
-                #fields_by_person = build_fields_by_person(session, auth, per_page=100, workers=args.workers)
-
                 # Step through each person in the data chunk
                 for person_obj in people:
                     # Get person ID
@@ -623,16 +533,13 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Any]]]:
                     if limit is not None and yielded >= limit:
                         # Calculate time taken to fetch and process data, as well as amount of people fetched
                         elapsed = time.perf_counter() - t0
-                        print(f"TOTAL: {count} people in {elapsed:.2f}s")
+                        print(f"TOTAL 2: {count} people in {elapsed:.2f}s")
                         return
     finally:
-        # Stop threads, print final time taken and people processed
-        _stop_progress.set()
-        _progress_thread.join(timeout=2.0)
-
         elapsed = time.perf_counter() - t0
         print(f"TOTAL: {count} people in {elapsed:.2f}s")
-        return tables
+
+    return tables
 
 def main() -> None:
     tables = extraction()

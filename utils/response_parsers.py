@@ -52,3 +52,32 @@ def safe_get(dct: Dict[str, Any], *keys, default=None):
 
     # Return found values
     return cur
+
+def return_sorted(obj: Dict[str, Any]) -> Dict[str, Any]:
+    data: Dict[str, Any] = {}
+    # Sort by the key
+    for k in sorted(obj.keys()):
+        # Get value by key
+        v = obj.get(k)
+        data[k] = v
+    return data
+
+def get_included_value(
+    rels: Dict[str, Any],
+    inc_index: Dict[Tuple[str, str], Dict[str, Any]],
+    relationship_name: str,
+) -> Optional[str]:
+    ref = safe_get(rels, relationship_name, "data", default=None)
+
+    if not isinstance(ref, dict):
+        return None
+
+    t = ref.get("type")
+    i = ref.get("id")
+
+    if not t or not i:
+        return None
+
+    obj = inc_index.get((t, i), {})
+    attrs = obj.get("attributes", {}) or {}
+    return attrs.get("value")
