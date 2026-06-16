@@ -1,47 +1,15 @@
 #!/usr/bin/env python3
 import os
-import sys
-import pprint
 import time
-import argparse
 import requests
 from typing import Dict, Any, List, Optional, Tuple, Iterator
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-import shutil
 
 from extractors.api_fetcher import pco_get
 from utils.response_parsers import safe_get, index_included, get_included_value, return_sorted
-from dataverse.credentials_urls import get_auth_from_env
+from utils.env_fetcher import get_auth_from_env, PCO_PEOPLE_INCLUDE_PERSON, PCO_PEOPLE_INCLUDE_FIELD_DATA
 
-# How many people to fetch, but still needs to fetch all the people data so doesn't speed it up too much
-DEFAULT_PEOPLE_LIMIT = os.getenv("PCO_PEOPLE_LIMIT", "all")
-
-# How many to fetch per API pull (usually 100, the max)
-PER_PAGE_DEFAULT = 100
-
-
-# Person include parameter used in later sections of the code
-INCLUDE_PERSON = "inactive_reason,marital_status,emails,phone_numbers,addresses,households.people"
-# Field data include parameter used in later sections of the code
-INCLUDE_FIELD_DATA = "field_definition,field_option,tab"
-
-# Function that prints the header nice and neat
-def print_header(title: str):
-    print("\n" + "=" * 80)
-    print(title)
-    print("=" * 80)
-
-
-# Function to print items (typically attributes) idented, and sorted by the key name
-def print_kv_sorted(obj: Dict[str, Any], indent: int = 2):
-    pad = " " * indent
-    # Sort by the key
-    for k in sorted(obj.keys()):
-        # Get value by key
-        v = obj.get(k)
-        # Print out the key with the value, with an indent
-        print(f"{pad}{k}: {v}")
 
 # Give each thread its own storage, ensuring that data remains seperate
 _thread_local = threading.local()
@@ -163,7 +131,7 @@ def build_fields_by_person(
 
     fields_by_person: Dict[str, List[Dict[str, Any]]] = {}
 
-    params = {"include": INCLUDE_FIELD_DATA}
+    params = {"include": PCO_PEOPLE_INCLUDE_FIELD_DATA}
 
     for payload in pco_iter_pages_threaded(
         "/people/v2/field_data",
@@ -267,7 +235,7 @@ def build_fields_by_person(
 
 
 # Function to process through person's data and then print out processed data
-def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tuple[str, str], Dict[str, Any]], fields_clean: List[Dict[str, Any]], name_only: bool = False) -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
+def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tuple[str, str], Dict[str, Any]], fields_clean: List[Dict[str, Any]]) -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     person_data: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
 
 
@@ -276,11 +244,6 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
     # Get person's attributes from the data
     p_attr = person_obj.get("attributes", {}) or {}
     rels = person_obj.get("relationships", {}) or {}
-
-    if name_only:
-        name = p_attr.get("name") or f"{p_attr.get('first_name','')}".strip() or "(no name)"
-        print(f"{name} ({person_id})")
-        return
 
     # Resolve included relationship values
     marital_status = get_included_value(rels, inc_index, "marital_status")
@@ -431,29 +394,6 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
     return person_data
 
 
-def fetch_person_with_includes(session: requests.Session, person_id: str, auth: Tuple[str, str]) -> Dict[str, Any]:
-    # Get parameters for the API request, marital reason, emails, phone numbers, etc
-    params = {"include": INCLUDE_PERSON}
-    # Fetch data for the person and then return the JSON
-    return pco_get(session=session, path=f"/people/v2/people/{person_id}", auth=auth, params=params)
-
-# Function that gets the limit of people to fetch, process and then print
-def _parse_limit(value: str) -> Optional[int]:
-    # If no value given, no limit
-    if value is None:
-        return None
-    # Make lowercase to parse easier
-    v = value.strip().lower()
-    # Same value as no limit
-    if v in ("all", "everyone", "*"):
-        return None
-    # Cast as an int
-    n = int(v)  
-    # Return value or throw error if less than 1
-    if n < 1:
-        raise ValueError("limit must be >= 1 or 'all'")
-    return n
-
 def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     tables: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
     processing: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
@@ -462,47 +402,25 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     # Keep track of how many people we've processed, to report at the end
     count = 0
 
-    # Parse command-line arguments for person ID, limit, pagination, and workers
-    parser = argparse.ArgumentParser(add_help=True)
-    parser.add_argument("--person-id", help="Process a single person ID (old behavior).")
-    parser.add_argument("--limit", default=DEFAULT_PEOPLE_LIMIT)
-    parser.add_argument("--per-page", type=int, default=PER_PAGE_DEFAULT)
-    parser.add_argument("--name-only", action="store_true")
-    parser.add_argument("--workers", type=int, default=int(os.getenv("PCO_MAX_WORKERS", "8")))
-    args = parser.parse_args()
+    per_page = int(os.getenv("PCO_PEOPLE_PAGE_LIMIT", "100"))
+    workers = int(os.getenv("PCO_MAX_WORKERS", "8"))
 
     # Get authentication from the environment variables
     auth = get_auth_from_env()
-    # Get limit of how many people to process through
-    limit = _parse_limit(str(args.limit))
-
 
     try:
         # Start http session to make API calls
         with requests.Session() as session:
             # Build one global custom-fields index first (batched)
-            fields_by_person = build_fields_by_person(session, auth, per_page=100, workers=args.workers)
-
-            if args.person_id:
-                # For single person mode, fetch data, not really that fast cause of the field data but oh well
-                payload = fetch_person_with_includes(session, args.person_id, auth)
-                # Get includes for person
-                inc_index = index_included(payload.get("included", []) or [])
-                # Get persons data from JSON
-                person_obj = payload.get("data", {}) or {}
-                # Get processed custom field data for person
-                fields_clean = fields_by_person.get(args.person_id, [])
-                # Process data for person
-                process_person_from_payload(person_obj, inc_index, fields_clean, name_only=args.name_only)
-                return
+            fields_by_person = build_fields_by_person(session, auth, per_page=100, workers=workers)
 
             # Bulk: page through people with includes (no per-person GET)
-            params = {"include": INCLUDE_PERSON}  # Set params as emails,phone_numbers,addresses,households.people
+            params = {"include": PCO_PEOPLE_INCLUDE_PERSON}  # Set params as emails,phone_numbers,addresses,households.people
             # See how many people we have data for, used when there is a limit of people to process through
             yielded = 0
 
             # Iterate through each page of people received, since pco_iter yields data bit by bit and process it
-            for payload in pco_iter_pages_threaded("/people/v2/people", auth, params=params, per_page=args.per_page, workers=args.workers):
+            for payload in pco_iter_pages_threaded("/people/v2/people", auth, params=params, per_page=per_page, workers=workers):
                 # Get data chunk from the JSON response, which is a list of people 
                 people = payload.get("data", []) or []
                 # Index the includes section for later
@@ -519,8 +437,7 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
                     processing = process_person_from_payload(
                         person_obj,
                         inc_index,
-                        fields_by_person.get(pid, []),
-                        name_only=args.name_only
+                        fields_by_person.get(pid, [])
                     )
                     # Process each person
                     tables.update(processing)
@@ -529,12 +446,6 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
                     count += 1
                     yielded += 1
 
-                    # If there is a limit on how many people to process, end loop after limit reached
-                    if limit is not None and yielded >= limit:
-                        # Calculate time taken to fetch and process data, as well as amount of people fetched
-                        elapsed = time.perf_counter() - t0
-                        print(f"TOTAL 2: {count} people in {elapsed:.2f}s")
-                        return
     finally:
         elapsed = time.perf_counter() - t0
         print(f"TOTAL: {count} people in {elapsed:.2f}s")
@@ -543,6 +454,16 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
 
 def main() -> None:
     tables = extraction()
+
+    print("\nExtraction complete. Table counts:")
+    print(len(tables))
+    #for name, rows in tables.items():
+        #print(f"  {name}: {len(rows)} rows")
+    # If you want to see a sample, uncomment:
+    #for name, rows in tables.items():
+    #     if rows:
+    #         print(f"\n{name} first row:")
+    #         print(rows[0])
 
 
 

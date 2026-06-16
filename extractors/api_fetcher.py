@@ -5,7 +5,7 @@ import threading
 import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
-from dataverse.credentials_urls import PCO_BASE_URL
+from utils.env_fetcher import PCO_BASE_URL
 
 # This file contains various functions that are used by the PCO API fetchers and Dataverse uploaders. They are in this file so that this Azure Function is more modular and other API fetchers can in theory
 # be implemented more easily. Also it makes the code more readable in general and not as long lol

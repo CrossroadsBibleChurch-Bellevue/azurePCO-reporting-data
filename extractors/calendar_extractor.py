@@ -10,7 +10,7 @@ from utils.metering import AzureLikeExecutionMeter
 from utils.hasher import stable_hash_id
 from utils.response_parsers import clean_text, _first_present, index_included, safe_get
 from extractors.schemas.calendar_schemas import build_row
-from dataverse.credentials_urls import get_auth_from_env
+from utils.env_fetcher import get_auth_from_env
 from utils.time_functions import to_local, parse_iso
 from extractors.fetchers.calendar_fetchers import fetch_event_instances_next_7_days, fetch_group_members_owner_table, fetch_tag_groups_with_tags
 from extractors.cache_stashers.calendar_cache_builders import enrich_requests, fetch_answers_cache, build_resource_questions_cache, build_rooms_cache
