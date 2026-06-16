@@ -9,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from extractors.api_fetcher import pco_get
 from utils.response_parsers import safe_get, index_included, get_included_value, return_sorted
 from utils.env_fetcher import get_auth_from_env, PCO_PEOPLE_INCLUDE_PERSON, PCO_PEOPLE_INCLUDE_FIELD_DATA
+from extractors.schemas.people_schemas import build_row_people
+from utils.datatable_helpers import upsert_row
 
 
 # Give each thread its own storage, ensuring that data remains seperate
@@ -27,7 +29,7 @@ def _get_thread_session() -> requests.Session:
     # Return thread session
     return s
 
-# Threaded function to go through all the pages of the API call, whether that is field_data or people; could be created into a seperate file as a function called but not yet lol
+# Threaded function to go through all the pages of the API call, whether that is field_data or people; could be created into a separate file as a function called but not yet lol
 def pco_iter_pages_threaded(
     path: str,
     auth: Tuple[str, str],
@@ -257,7 +259,7 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
     person_data[person_id] = {}
     person_data[person_id]["core_attributes"] = {}
     person_data[person_id]["core_attributes"]["1"] = {}
-    person_data[person_id]["core_attributes"] = return_sorted(core_attrs)
+    person_data[person_id]["core_attributes"]["1"] = return_sorted(core_attrs)
 
     # Get the emails for the person
     emails_refs = safe_get(rels, "emails", "data", default=[]) or []
@@ -285,7 +287,7 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
         for k in sorted(attrs.keys()):
             # Get value by key
             v = attrs.get(k)
-            person_data[person_id]["emails"][counter][k] = {v}
+            person_data[person_id]["emails"][counter][k] = v
 
     counter = 0
     for idx, ref in enumerate(phones_refs, start=1):
@@ -300,7 +302,7 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
         for k in sorted(attrs.keys()):
             # Get value by key
             v = attrs.get(k)
-            person_data[person_id]["phones"][counter][k] = {v}
+            person_data[person_id]["phones"][counter][k] = v
 
     # Step through the resources
     counter = 0
@@ -316,7 +318,7 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
         for k in sorted(attrs.keys()):
             # Get value by key
             v = attrs.get(k)
-            person_data[person_id]["addresses"][counter][k] = {v}
+            person_data[person_id]["addresses"][counter][k] = v
 
     person_data[person_id]["household"] = {}
     person_data[person_id]["household"]["1"] = {
@@ -394,6 +396,95 @@ def process_person_from_payload(person_obj: Dict[str, Any], inc_index: Dict[Tupl
     return person_data
 
 
+def build_tables(parsed: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]) -> Dict[str, Any]:
+
+
+    addresses: Dict[str, Dict[str, Any]] = {}
+    core_attributes: Dict[str, Dict[str, Any]] = {}
+    custom_fields: Dict[str, Dict[str, Any]] = {}
+    custom_tabs: Dict[str, Dict[str, Any]] = {}
+    custom_values: Dict[str, Dict[str, Any]] = {}
+    emails: Dict[str, Dict[str, Any]] = {}
+    household: Dict[str, Dict[str, Any]] = {}
+    phones: Dict[str, Dict[str, Any]] = {}
+
+    for key1, dict_level2 in parsed.items():
+        person_id = key1
+
+        for key2, dict_level3 in dict_level2.items():
+            table = key2
+
+            for key3, dict_level4 in dict_level3.items():
+
+                if table == "addresses":
+                    upsert_row(addresses, build_row_people(
+                        "address",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                elif table == "core_attributes":
+                    upsert_row(core_attributes, build_row_people(
+                        "core_attribute",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_person_id")
+                elif table == "custom_fields":
+                    upsert_row(custom_fields, build_row_people(
+                        "custom_fields",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                    upsert_row(custom_values, build_row_people(
+                        "custom_values",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                elif table == "custom_tabs":
+                    upsert_row(custom_tabs, build_row_people(
+                        "custom_tabs",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                elif table == "emails":
+                    upsert_row(emails, build_row_people(
+                        "emails",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                elif table == "household":
+                    upsert_row(household, build_row_people(
+                        "household",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+                elif table == "phones":
+                    upsert_row(phones, build_row_people(
+                        "phones",
+                        {"person_id": person_id,
+                        "chunk": dict_level4,
+                        }
+                    ), pk="cr0b4_hash_id")
+
+
+
+    return {
+        "address": list(addresses.values()),
+        "core_attribute": list(core_attributes.values()),
+        "custom_fields": list(custom_fields.values()),
+        "custom_tabs": list(custom_tabs.values()),
+        "custom_values": list(custom_values.values()),
+        "emails": list(emails.values()),
+        "household": list(household.values()),
+        "phones": list(phones.values()),
+    }
+
 def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     tables: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
     processing: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
@@ -445,25 +536,29 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
                     # Increment counters
                     count += 1
                     yielded += 1
-
+                    if yielded >= 5:
+                        built = build_tables(tables)
+                        return built   
+                
     finally:
         elapsed = time.perf_counter() - t0
         print(f"TOTAL: {count} people in {elapsed:.2f}s")
 
-    return tables
+    built = build_tables(tables)
+    return built
 
 def main() -> None:
     tables = extraction()
 
     print("\nExtraction complete. Table counts:")
     print(len(tables))
-    #for name, rows in tables.items():
-        #print(f"  {name}: {len(rows)} rows")
+    for name, rows in tables.items():
+        print(f"  {name}: {len(rows)} rows")
     # If you want to see a sample, uncomment:
-    #for name, rows in tables.items():
-    #     if rows:
-    #         print(f"\n{name} first row:")
-    #         print(rows[0])
+    for name, rows in tables.items():
+         if rows:
+             print(f"\n{name} first row:")
+             print(rows[0])
 
 
 

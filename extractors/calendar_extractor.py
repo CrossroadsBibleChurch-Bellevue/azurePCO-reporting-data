@@ -7,9 +7,9 @@ from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 
 from utils.metering import AzureLikeExecutionMeter
-from utils.hasher import stable_hash_id
-from utils.response_parsers import clean_text, _first_present, index_included, safe_get
-from extractors.schemas.calendar_schemas import build_row
+from utils.response_parsers import _first_present, index_included, safe_get
+from utils.datatable_helpers import upsert_row
+from extractors.schemas.calendar_schemas import build_row_calendar
 from utils.env_fetcher import get_auth_from_env
 from utils.time_functions import to_local, parse_iso
 from extractors.fetchers.calendar_fetchers import fetch_event_instances_next_7_days, fetch_group_members_owner_table, fetch_tag_groups_with_tags
@@ -20,20 +20,6 @@ logger = logging.getLogger("myapp")
 logger.setLevel(logging.INFO)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-
-def upsert_row(table: Dict[str, Dict[str, Any]], row: Dict[str, Any], pk: str = "id"):
-    rid = row.get(pk)
-    if rid is None:
-        return
-    if rid not in table:
-        table[rid] = row
-        return
-    existing = table[rid]
-    for k, v in row.items():
-        if k == "cr0b4_unique_id" or k not in existing or existing[k] is None:
-            existing[k] = v
-
 
 
 # Big function that goes through the data and builds tables that will be used in dataverse
@@ -85,7 +71,7 @@ def build_relational_tables(
         tg_rel = tg.get("relationships", {}) or {}
 
         if tg_id:
-            upsert_row(tag_groups, build_row("tag_groups", {
+            upsert_row(tag_groups, build_row_calendar("tag_groups", {
                 "tg_id": tg_id,
                 "tg_attr": tg_attr,
             }), pk="cr548_id")
@@ -99,13 +85,13 @@ def build_relational_tables(
 
             t_obj = tg_inc.get((tr.get("type"), tag_id), {}) or {}
             t_attr = t_obj.get("attributes", {}) or {}
-            upsert_row(tags, build_row("tags", {
+            upsert_row(tags, build_row_calendar("tags", {
                     "tag_id": tag_id,
                     "t_attr": t_attr,
                 }), pk="cr548_id")
             
             # Create a sort of bridge between tags and tag groups
-            upsert_row(tag_groups_tag_maps, build_row("tag_groups_tag_maps", {
+            upsert_row(tag_groups_tag_maps, build_row_calendar("tag_groups_tag_maps", {
                 "tag_id": tag_id,
                 "tg_id": tg_id,
             }), pk="cr0b4_unique_id")
@@ -118,7 +104,7 @@ def build_relational_tables(
             continue
         
         if res_attr.get("kind") != "Room":
-            upsert_row(resources, build_row("resources", {
+            upsert_row(resources, build_row_calendar("resources", {
                 "resource_id": resource_id,
                 "res_attr": res_attr
             }), pk="cr548_id")
@@ -129,7 +115,7 @@ def build_relational_tables(
         if not room_id:
             continue
 
-        upsert_row(rooms, build_row("rooms", {
+        upsert_row(rooms, build_row_calendar("rooms", {
             "room_id": room_id,
             "r_attr": r_attr
         }), pk="cr548_id")
@@ -154,7 +140,7 @@ def build_relational_tables(
         if owner_id:
             owner_obj = inc.get((owner_ref.get("type"), owner_id), {}) or {}
             owner_attr = owner_obj.get("attributes", {}) or {}
-            upsert_row(owners, build_row("owners", {
+            upsert_row(owners, build_row_calendar("owners", {
                 "owner_id": owner_id,
                 "owner_attr": owner_attr
             }), pk="cr548_id")
@@ -163,7 +149,7 @@ def build_relational_tables(
         if ev_id:
             if owner_id == "null_person":
                 owner_id = None
-            upsert_row(events, build_row("events", {
+            upsert_row(events, build_row_calendar("events", {
                 "ev_id": ev_id,
                 "ev_attr": ev_attr,
                 "owner_id": owner_id,
@@ -177,7 +163,7 @@ def build_relational_tables(
                 continue
             t_obj = inc.get((tr.get("type"), tag_id), {}) or {}
             t_attr = t_obj.get("attributes", {}) or {}
-            upsert_row(tags, build_row("tags", {
+            upsert_row(tags, build_row_calendar("tags", {
                     "tag_id": tag_id,
                     "t_attr": t_attr,
                 }), pk="cr548_id")
@@ -186,7 +172,7 @@ def build_relational_tables(
         starts_local = to_local(parse_iso(attr.get("starts_at")), tz)
         day_of_week = starts_local.isoweekday() if starts_local else None
 
-        upsert_row(event_instances, build_row("event_instances", {
+        upsert_row(event_instances, build_row_calendar("event_instances", {
             "inst_id": inst_id,
             "ev_id": ev_id,
             "attr": attr,
@@ -201,7 +187,7 @@ def build_relational_tables(
                 continue
             et_obj = inc.get((r.get("type"), et_id), {}) or {}
             et_attr = et_obj.get("attributes", {}) or {}
-            upsert_row(event_times, build_row("event_times", {
+            upsert_row(event_times, build_row_calendar("event_times", {
                 "et_id": et_id,
                 "ev_id": ev_id,
                 "et_attr": et_attr
@@ -215,13 +201,13 @@ def build_relational_tables(
                 continue
             t_obj = inc.get((tr.get("type"), tag_id), {}) or {}
             t_attr = t_obj.get("attributes", {}) or {}
-            upsert_row(tags, build_row("tags", {
+            upsert_row(tags, build_row_calendar("tags", {
                     "tag_id": tag_id,
                     "t_attr": t_attr,
                 }), pk="cr548_id")
             
             # Event instance ID and tag ID bridge
-            upsert_row(event_instance_tag_map, build_row("event_instance_tag_map", {
+            upsert_row(event_instance_tag_map, build_row_calendar("event_instance_tag_map", {
                 "inst_id": inst_id,
                 "tag_id": tag_id,
             }), pk="cr0b4_alt_key")
@@ -247,12 +233,12 @@ def build_relational_tables(
                 res_type = res_attr.get("kind")
 
                 if res_type.lower() == "room":
-                    upsert_row(rooms, build_row("rooms", {
+                    upsert_row(rooms, build_row_calendar("rooms", {
                         "room_id": res_id,
                         "r_attr": res_attr
                     }), pk="cr548_id")
                 else:
-                    upsert_row(resources, build_row("resources", {
+                    upsert_row(resources, build_row_calendar("resources", {
                         "resource_id": res_id,
                         "res_attr": res_attr
                     }), pk="cr548_id")
@@ -262,7 +248,7 @@ def build_relational_tables(
             req_id = req_ref.get("id") if isinstance(req_ref, dict) else None
 
             # ResourceBookings row
-            upsert_row(resource_bookings, build_row("resource_bookings", {
+            upsert_row(resource_bookings, build_row_calendar("resource_bookings", {
                 "rb_id": rb_id,
                 "ev_id": ev_id,
                 "inst_id": inst_id,
@@ -293,12 +279,12 @@ def build_relational_tables(
                 updated_by_id = updated_by.get("id")
 
                 if rs_id:
-                    upsert_row(room_setups, build_row("room_setups", {
+                    upsert_row(room_setups, build_row_calendar("room_setups", {
                         "rs_id": rs_id,
                         "rs_attr": rs_attr
                     }), pk="cr548_id")
 
-                upsert_row(event_resource_requests, build_row("event_resource_requests", {
+                upsert_row(event_resource_requests, build_row_calendar("event_resource_requests", {
                     "req_id": req_id,
                     "req_event_id": req_event_id,
                     "req_resource_id": req_resource_id,
@@ -319,7 +305,7 @@ def build_relational_tables(
                             if room is not None:
                                 room_names = room.get("cr548_name1")
                                 if room_names is not None:
-                                    schedule.append(build_row("schedule", {
+                                    schedule.append(build_row_calendar("schedule", {
                                         "inst_id": inst_id,
                                         "ans": answer_text if answer_text is not None else "(Unanswered)",
                                         "ques": question_text,
@@ -356,7 +342,7 @@ def build_relational_tables(
                     if ans_id:
                         if isinstance(answer_text, list):
                             answer_text = ", ".join(answer_text)
-                        upsert_row(event_resource_answers, build_row("event_resource_answers", {
+                        upsert_row(event_resource_answers, build_row_calendar("event_resource_answers", {
                             "ans_id": ans_id,
                             "req_id": req_id,
                             "q_id": q_id,
@@ -374,7 +360,7 @@ def build_relational_tables(
                             if room is not None:
                                 room_names = room.get("cr548_name1")
                                 if room_names is not None:
-                                    schedule.append(build_row("schedule", {
+                                    schedule.append(build_row_calendar("schedule", {
                                         "inst_id": inst_id,
                                         "ans": answer_text if answer_text is not None else "(Unanswered)",
                                         "ques": question_text,

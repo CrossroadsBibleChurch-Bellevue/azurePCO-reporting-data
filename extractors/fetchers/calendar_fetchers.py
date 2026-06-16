@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from extractors.api_fetcher import pco_get_all_pages, pco_get
 from utils.response_parsers import safe_get
-from extractors.schemas.calendar_schemas import build_row
+from extractors.schemas.calendar_schemas import build_row_calendar
 
 # Fetch next 7 days of event instances, from time program is run till 7 days from then
 # Gets events, owners, event tags, event times, resource bookings, instance tags, resource bookings, and resource requests
@@ -116,7 +116,7 @@ def fetch_group_members_owner_table(auth: Tuple[str, str], group_id: str) -> Lis
             person = people_map.get(person_id, {})
             attr = person.get("attributes", {})
 
-            all_members.append(build_row("owners", {
+            all_members.append(build_row_calendar("owners", {
                 "owner_id": person_id,
                 "owner_attr": attr
             }))

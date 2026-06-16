@@ -62,6 +62,14 @@ def return_sorted(obj: Dict[str, Any]) -> Dict[str, Any]:
         data[k] = v
     return data
 
+def safe_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
 def get_included_value(
     rels: Dict[str, Any],
     inc_index: Dict[Tuple[str, str], Dict[str, Any]],

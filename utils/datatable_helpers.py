@@ -11,3 +11,15 @@ def sanitize_schema_name(name: str) -> str:
 def strip_nones(row: Dict[str, Any]) -> Dict[str, Any]:
     # Omit nulls to avoid accidental clears unless desired.
     return {k: v for k, v in row.items() if v is not None}
+
+def upsert_row(table: Dict[str, Dict[str, Any]], row: Dict[str, Any], pk: str = "id"):
+    rid = row.get(pk)
+    if rid is None:
+        return
+    if rid not in table:
+        table[rid] = row
+        return
+    existing = table[rid]
+    for k, v in row.items():
+        if k == "cr0b4_unique_id" or k not in existing or existing[k] is None:
+            existing[k] = v

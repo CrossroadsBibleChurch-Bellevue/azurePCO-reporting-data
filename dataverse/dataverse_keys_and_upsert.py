@@ -35,6 +35,7 @@ def upsert_table(client: DataverseClient, table: str, rows: List[Dict[str, Any]]
     # Bulk upsert tables to dataverse
     items = build_upsert_items(rows, key_cols)
     for i in range(0, len(items), batch_size):
+        #print(items[i:i + batch_size])
         client.records.upsert(table, items[i:i + batch_size])
 
 
@@ -70,7 +71,7 @@ def ensure_keys_and_upsert_all(
         for extractor_name, dv_table in table_map.items():
             rows = tables.get(extractor_name, []) or []
             upsert_table(client, dv_table, rows, key_plan[extractor_name])
-            logging.info(f"{extractor_name} -> {dv_table}: upserted {len(rows)} rows")
+            print(f"{extractor_name} -> {dv_table}: upserted {len(rows)} rows")
 
     r = m.result()
     logging.info(

@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict
 
-from utils.response_parsers import clean_text, _first_present
+from utils.response_parsers import clean_text, _first_present, safe_int
 from utils.hasher import stable_hash_id
 
 # This file contains all of the schemas for the various Dataverse Tables used. To edit a pre-existing table, merely go to the schema below and add, delete, or modify
@@ -10,15 +10,6 @@ from utils.hasher import stable_hash_id
 RowContext = Dict[str, Any]
 FieldGetter = Callable[[RowContext], Any]
 RowSchema = Dict[str, FieldGetter]
-
-
-def safe_int(value: Any) -> int | None:
-    if value is None:
-        return None
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
 
 
 SCHEMAS: Dict[str, RowSchema] = {
@@ -220,7 +211,7 @@ SCHEMAS: Dict[str, RowSchema] = {
 }
 
 
-def build_row(schema_name: str, context: RowContext) -> Dict[str, Any]:
+def build_row_calendar(schema_name: str, context: RowContext) -> Dict[str, Any]:
     schema = SCHEMAS[schema_name]
     return {
         column_name: getter(context)
