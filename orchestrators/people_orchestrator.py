@@ -4,6 +4,7 @@ from extractors.people_extractor import extraction  # your extractor module name
 from dataverse.dataverse_keys_and_upsert import ensure_keys_and_upsert_all
 from utils.env_fetcher import DATAVERSE_ORG_URL
 
+
 TABLE_MAP = {
     "address": "cr0b4_address",
     "core_attribute": "cr0b4_core_attribute",

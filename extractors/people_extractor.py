@@ -536,9 +536,9 @@ def extraction() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
                     # Increment counters
                     count += 1
                     yielded += 1
-                    if yielded >= 5:
-                        built = build_tables(tables)
-                        return built   
+                    #if yielded >= 5:
+                    #    built = build_tables(tables)
+                    #    return built   
                 
     finally:
         elapsed = time.perf_counter() - t0
