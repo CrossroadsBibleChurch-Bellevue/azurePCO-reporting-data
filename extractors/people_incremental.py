@@ -2,11 +2,9 @@
 import os
 import time
 import requests
-from typing import Dict, Any, List, Optional, Tuple, Iterator
+from typing import Dict, Any, List, Optional, Tuple, Iterator, Callable
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
-from datetime import datetime, timezone
-from requests import HTTPError
 
 from extractors.api_fetcher import pco_get
 from utils.response_parsers import safe_get, index_included, get_included_value, return_sorted
@@ -18,306 +16,7 @@ from utils.datatable_helpers import upsert_row
 # Give each thread its own storage, ensuring that data remains seperate
 _thread_local = threading.local()
 
-def parse_pco_datetime(value: str) -> datetime:
-    if not value:
-        raise ValueError("Missing datetime value")
-
-    # PCO returns ISO strings like 2000-01-01T12:00:00Z
-    if value.endswith("Z"):
-        value = value[:-1] + "+00:00"
-
-    dt = datetime.fromisoformat(value)
-
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-
-    return dt.astimezone(timezone.utc)
-
-
-def get_updated_at(obj: Dict[str, Any]) -> Optional[datetime]:
-    value = safe_get(obj, "attributes", "updated_at", default=None)
-
-    if not value:
-        return None
-
-    return parse_pco_datetime(value)
-
-def pco_iter_pages_until_updated_at(
-    path: str,
-    auth: Tuple[str, str],
-    since: datetime,
-    params: Optional[Dict[str, str]] = None,
-    per_page: int = 100,
-    order_field: str = "updated_at",
-) -> Iterator[Dict[str, Any]]:
-    if params is None:
-        params = {}
-
-    per_page = max(1, min(int(per_page), 100))
-    offset = 0
-
-    since = since.astimezone(timezone.utc)
-
-    with requests.Session() as session:
-        while True:
-            page_params = dict(params)
-            page_params["per_page"] = str(per_page)
-            page_params["offset"] = str(offset)
-
-            # Newest first.
-            page_params["order"] = f"-{order_field}"
-
-            payload = pco_get(
-                session=session,
-                path=path,
-                auth=auth,
-                params=page_params,
-            )
-
-            data = payload.get("data", []) or []
-
-            if not data:
-                break
-
-            kept = []
-
-            for obj in data:
-                updated_at = get_updated_at(obj)
-
-                # If updated_at is missing, keep it rather than silently dropping it.
-                if updated_at is None:
-                    kept.append(obj)
-                    continue
-
-                # Since data is ordered newest -> oldest, this is where we stop.
-                if updated_at < since:
-                    if kept:
-                        payload = dict(payload)
-                        payload["data"] = kept
-                        yield payload
-
-                    return
-
-                kept.append(obj)
-
-            payload = dict(payload)
-            payload["data"] = kept
-            yield payload
-
-            if len(data) < per_page:
-                break
-
-            offset += per_page
-
-def build_field_row_from_datum(
-    datum: Dict[str, Any],
-    inc: Dict[Tuple[str, str], Dict[str, Any]],
-) -> Optional[Tuple[str, Dict[str, Any]]]:
-    cust = safe_get(datum, "relationships", "customizable", "data", default=None)
-
-    if not isinstance(cust, dict):
-        return None
-
-    if cust.get("type") != "Person":
-        return None
-
-    person_id = cust.get("id")
-
-    if not person_id:
-        return None
-
-    value = safe_get(datum, "attributes", "value")
-
-    fd_ref = safe_get(datum, "relationships", "field_definition", "data", default={}) or {}
-    fd_type = fd_ref.get("type")
-    fd_id = fd_ref.get("id")
-
-    field_definition = inc.get((fd_type, fd_id), {}) if fd_type and fd_id else {}
-    fd_attr = field_definition.get("attributes", {}) or {}
-
-    field_definition_name = fd_attr.get("name")
-    field_definition_slug = fd_attr.get("slug")
-    field_definition_data_type = fd_attr.get("data_type")
-
-    tab_ref = safe_get(datum, "relationships", "tab", "data", default=None)
-
-    if not isinstance(tab_ref, dict):
-        tab_ref = safe_get(field_definition, "relationships", "tab", "data", default=None)
-
-    tab_type = tab_ref.get("type") if isinstance(tab_ref, dict) else None
-    tab_id = tab_ref.get("id") if isinstance(tab_ref, dict) else None
-
-    tab_obj = inc.get((tab_type, tab_id), {}) if tab_type and tab_id else {}
-    tab_attr = tab_obj.get("attributes", {}) or {}
-
-    tab_name = tab_attr.get("name")
-
-    opt_ref = safe_get(datum, "relationships", "field_option", "data", default=None)
-    option_value = None
-    option_id = None
-
-    if isinstance(opt_ref, dict) and opt_ref.get("type") and opt_ref.get("id"):
-        option_id = opt_ref.get("id")
-        opt_obj = inc.get((opt_ref.get("type"), opt_ref.get("id")), {})
-        option_value = safe_get(opt_obj, "attributes", "value")
-
-    row = {
-        "field_definition_id": fd_id,
-        "field_definition_name": field_definition_name,
-        "field_definition_slug": field_definition_slug,
-        "field_definition_data_type": field_definition_data_type,
-        "tab_id": tab_id,
-        "tab_name": tab_name,
-        "value": value,
-        "option_id": option_id,
-        "option_value": option_value,
-        "display_value": option_value if option_value not in (None, "") else value,
-    }
-
-    return person_id, row
-
-def get_recent_people_objects(
-    auth: Tuple[str, str],
-    since: datetime,
-    per_page: int = 100,
-) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[Tuple[str, str], Dict[str, Any]]]]:
-    people_by_id: Dict[str, Dict[str, Any]] = {}
-    included_by_person_id: Dict[str, Dict[Tuple[str, str], Dict[str, Any]]] = {}
-
-    params = {
-        "include": PCO_PEOPLE_INCLUDE_PERSON,
-    }
-
-    for payload in pco_iter_pages_until_updated_at(
-        "/people/v2/people",
-        auth,
-        since=since,
-        params=params,
-        per_page=per_page,
-        order_field="updated_at",
-    ):
-        people = payload.get("data", []) or []
-        inc_index = index_included(payload.get("included", []) or [])
-
-        for person_obj in people:
-            pid = person_obj.get("id")
-
-            if not pid:
-                continue
-
-            people_by_id[pid] = person_obj
-            included_by_person_id[pid] = inc_index
-
-    return people_by_id, included_by_person_id
-
-def get_recent_field_data_person_ids(
-    auth: Tuple[str, str],
-    since: datetime,
-    per_page: int = 100,
-) -> set[str]:
-    person_ids: set[str] = set()
-
-    params = {
-        "include": PCO_PEOPLE_INCLUDE_FIELD_DATA,
-    }
-
-    for payload in pco_iter_pages_until_updated_at(
-        "/people/v2/field_data",
-        auth,
-        since=since,
-        params=params,
-        per_page=per_page,
-        order_field="updated_at",
-    ):
-        data = payload.get("data", []) or []
-
-        for datum in data:
-            cust = safe_get(datum, "relationships", "customizable", "data", default=None)
-
-            if not isinstance(cust, dict):
-                continue
-
-            if cust.get("type") != "Person":
-                continue
-
-            pid = cust.get("id")
-
-            if pid:
-                person_ids.add(pid)
-
-    return person_ids
-
-def fetch_person_by_id(
-    session: requests.Session,
-    auth: Tuple[str, str],
-    person_id: str,
-) -> Tuple[Dict[str, Any], Dict[Tuple[str, str], Dict[str, Any]]]:
-    payload = pco_get(
-        session=session,
-        path=f"/people/v2/people/{person_id}",
-        auth=auth,
-        params={
-            "include": PCO_PEOPLE_INCLUDE_PERSON,
-        },
-    )
-
-    person_obj = payload.get("data", {}) or {}
-    inc_index = index_included(payload.get("included", []) or [])
-
-    return person_obj, inc_index
-
-def build_fields_for_person_ids(
-    auth: Tuple[str, str],
-    person_ids: set[str],
-    per_page: int = 100,
-) -> Dict[str, List[Dict[str, Any]]]:
-    fields_by_person: Dict[str, List[Dict[str, Any]]] = {}
-
-    with requests.Session() as session:
-        for person_id in person_ids:
-            offset = 0
-
-            while True:
-                payload = pco_get(
-                    session=session,
-                    path=f"/people/v2/people/{person_id}/field_data",
-                    auth=auth,
-                    params={
-                        "include": PCO_PEOPLE_INCLUDE_FIELD_DATA,
-                        "per_page": str(per_page),
-                        "offset": str(offset),
-                    },
-                )
-
-                data = payload.get("data", []) or []
-                inc = index_included(payload.get("included", []) or [])
-
-                for datum in data:
-                    built = build_field_row_from_datum(datum, inc)
-
-                    if not built:
-                        continue
-
-                    pid, row = built
-                    fields_by_person.setdefault(pid, []).append(row)
-
-                if len(data) < per_page:
-                    break
-
-                offset += per_page
-
-    for pid, rows in fields_by_person.items():
-        rows.sort(
-            key=lambda r: (
-                r.get("tab_name") or "",
-                r.get("field_definition_name") or "",
-            )
-        )
-
-    return fields_by_person
-
-
-
+updated_at_filter = os.getenv("PCO_UPDATED_SINCE")
 
 
 # Give each thread worker its own independent request session
@@ -332,6 +31,17 @@ def _get_thread_session() -> requests.Session:
     # Return thread session
     return s
 
+
+def stop_when_older_than_cutoff(payload: Dict[str, Any]) -> bool:
+    for item in payload.get("data", []) or []:
+        updated_at = safe_get(item, "attributes", "updated_at", default=None)
+
+        if updated_at and updated_at < updated_at_filter:
+            return True
+
+    return False
+
+
 # Threaded function to go through all the pages of the API call, whether that is field_data or people; could be created into a separate file as a function called but not yet lol
 def pco_iter_pages_threaded(
     path: str,
@@ -340,10 +50,17 @@ def pco_iter_pages_threaded(
     per_page: int = 100,
     workers: int = 8,
     max_in_flight: Optional[int] = None,
+    stop_condition: Optional[Callable[[Dict[str, Any]], bool]] = None,
 ) -> Iterator[Dict[str, Any]]:
     # Make params empty if set to none to successfully make API request
     if params is None:
         params = {}
+
+    # Order all paginated API calls by most recently updated first
+    params = dict(params)
+    params["order"] = "-updated_at"
+
+    updated_at_lock = threading.Lock()
 
     # Make per_page either user-defined or 100 (API max allowed)
     per_page = max(1, min(int(per_page), 100))
@@ -368,6 +85,14 @@ def pco_iter_pages_threaded(
         page_params["offset"] = str(off)
         # Send request to the API and then get the JSON response
         payload = pco_get(session=sess, path=path, auth=auth, params=page_params)
+
+        """for item in payload.get("data", []) or []:
+            item_id = item.get("id")
+            updated_at = safe_get(item, "attributes", "updated_at", default=None)
+
+            if updated_at >= updated_at_filter:
+                print("Updated at:", updated_at, "   before: ", updated_at_filter)"""
+
         # Number of items in data section of the JSON, which is used later to determine if it is the last page
         n = len(payload.get("data", []) or [])
         # Return data
@@ -380,15 +105,24 @@ def pco_iter_pages_threaded(
     in_flight: Dict[int, Any] = {}        # offset -> Future
     completed: Dict[int, Dict[str, Any]] = {}  # offset -> payload
 
+    stop_submitting = False
+    last_submitted_offset: Optional[int] = None
+    last_offset_to_yield: Optional[int] = None
+
     # Set muti-thread process to fetch multiple pages at a time
     with ThreadPoolExecutor(max_workers=workers) as ex:
         while True:
             # Send workers to get data if not at end and not over max workers allowed in use
-            while len(in_flight) < max_in_flight and (end_offset is None or next_submit <= end_offset):
+            while (
+                not stop_submitting
+                and len(in_flight) < max_in_flight
+                and (last_offset_to_yield is None or next_submit <= last_offset_to_yield)
+            ):
                 # Send worker off and get data in return
                 fut = ex.submit(fetch_offset, next_submit)
                 # Add data and offset to in flight dict to track it
                 in_flight[next_submit] = fut
+                last_submitted_offset = next_submit
                 # Increase offset for the next worker being sent
                 next_submit += per_page
 
@@ -410,12 +144,25 @@ def pco_iter_pages_threaded(
                     in_flight.pop(off, None)
 
                     # First short page defines the last meaningful offset
-                    if n < per_page and end_offset is None:
-                        end_offset = off
+                    if n < per_page:
+                        stop_submitting = True
+                        last_offset_to_yield = off if last_offset_to_yield is None else min(last_offset_to_yield, off)
+
+                    # Custom stop condition:
+                    # stop sending new API requests, but still drain already-submitted workers
+                    if stop_condition is not None and stop_condition(payload):
+                        stop_submitting = True
+
+                        if last_submitted_offset is not None:
+                            last_offset_to_yield = (
+                                last_submitted_offset
+                                if last_offset_to_yield is None
+                                else min(last_offset_to_yield, last_submitted_offset)
+                            )
 
             # Send data back in some order
             while next_yield in completed:
-                if end_offset is not None and next_yield > end_offset:
+                if last_offset_to_yield is not None and next_yield > last_offset_to_yield:
                     break
                 # Send data back to the func that called this one
                 yield completed.pop(next_yield)
@@ -423,7 +170,7 @@ def pco_iter_pages_threaded(
                 next_yield += per_page
 
             # Exit when we've yielded through the end and nothing else is pending
-            if end_offset is not None and next_yield > end_offset and not in_flight:
+            if last_offset_to_yield is not None and next_yield > last_offset_to_yield and not in_flight:
                 break
 
 # Build the custom fields for each person
@@ -788,86 +535,71 @@ def build_tables(parsed: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]) -> Dic
         "phones": list(phones.values()),
     }
 
-def extraction() -> Dict[str, Any]:
+def extraction_updates() -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     tables: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+    processing: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]] = {}
+    updated_at_by_person: Dict[str, str] = {}
+    # Record time to see how long it takes to get all the data
     t0 = time.perf_counter()
+    # Keep track of how many people we've processed, to report at the end
     count = 0
 
     per_page = int(os.getenv("PCO_PEOPLE_PAGE_LIMIT", "100"))
+    workers = int(os.getenv("PCO_MAX_WORKERS", "8"))
 
-    updated_since_raw = os.getenv("PCO_UPDATED_SINCE")
-
-    if not updated_since_raw:
-        raise ValueError("Missing required env var: PCO_UPDATED_SINCE")
-
-    updated_since = parse_pco_datetime(updated_since_raw)
-
+    # Get authentication from the environment variables
     auth = get_auth_from_env()
 
     try:
-        # 1. Get people directly updated since cutoff.
-        people_by_id, included_by_person_id = get_recent_people_objects(
-            auth,
-            since=updated_since,
-            per_page=per_page,
-        )
-
-        # 2. Get people whose custom field data changed since cutoff.
-        field_changed_person_ids = get_recent_field_data_person_ids(
-            auth,
-            since=updated_since,
-            per_page=per_page,
-        )
-
-        # 3. Union all changed person ids.
-        changed_person_ids = set(people_by_id.keys()) | field_changed_person_ids
-
-        # 4. Fetch missing person objects for people found only through field_data changes.
-        missing_person_ids = changed_person_ids - set(people_by_id.keys())
-
+        # Start http session to make API calls
         with requests.Session() as session:
-            for pid in missing_person_ids:
-                person_obj, inc_index = fetch_person_by_id(session, auth, pid)
+            # Build one global custom-fields index first (batched)
+            fields_by_person = build_fields_by_person(session, auth, per_page=100, workers=workers)
 
-                if not person_obj:
-                    continue
+            # Bulk: page through people with includes (no per-person GET)
+            params = {"include": PCO_PEOPLE_INCLUDE_PERSON}  # Set params as emails,phone_numbers,addresses,households.people
+            # See how many people we have data for, used when there is a limit of people to process through
+            yielded = 0
 
-                people_by_id[pid] = person_obj
-                included_by_person_id[pid] = inc_index
+            # Iterate through each page of people received, since pco_iter yields data bit by bit and process it
+            for payload in pco_iter_pages_threaded("/people/v2/people", auth, params=params, per_page=per_page, workers=workers, stop_condition=stop_when_older_than_cutoff):
+                # Get data chunk from the JSON response, which is a list of people 
+                people = payload.get("data", []) or []
+                # Index the includes section for later
+                inc_index = index_included(payload.get("included", []) or [])
 
-        # 5. Fetch full current custom fields only for changed people.
-        fields_by_person = build_fields_for_person_ids(
-            auth,
-            changed_person_ids,
-            per_page=100,
-        )
-
-        # 6. Build the same parsed structure as before.
-        for pid in changed_person_ids:
-            person_obj = people_by_id.get(pid)
-
-            if not person_obj:
-                continue
-
-            processing = process_person_from_payload(
-                person_obj,
-                included_by_person_id.get(pid, {}),
-                fields_by_person.get(pid, []),
-            )
-
-            tables.update(processing)
-            count += 1
-
+                # Step through each person in the data chunk
+                for person_obj in people:
+                    # Get person ID
+                    pid = person_obj.get("id")
+                    # If no ID, then move on, since hard to keep track of them
+                    if not pid:
+                        continue
+                    
+                    processing = process_person_from_payload(
+                        person_obj,
+                        inc_index,
+                        fields_by_person.get(pid, [])
+                    )
+                    # Process each person
+                    tables.update(processing)
+                    
+                    # Increment counters
+                    count += 1
+                    yielded += 1
+                    #if yielded >= 5:
+                    #    built = build_tables(tables)
+                    #    return built   
+                
     finally:
         elapsed = time.perf_counter() - t0
-        print(f"TOTAL UPDATED PEOPLE: {count} people in {elapsed:.2f}s")
+        print(f"TOTAL: {count} people in {elapsed:.2f}s")
 
     built = build_tables(tables)
     return built
 
-
 def main() -> None:
-    tables = extraction()
+    tables = extraction_updates()
 
     print("\nExtraction complete. Table counts:")
     print(len(tables))
