@@ -16,12 +16,6 @@ from extractors.fetchers.calendar_fetchers import fetch_event_instances_next_7_d
 from extractors.cache_stashers.calendar_cache_builders import enrich_requests, fetch_answers_cache, build_resource_questions_cache, build_rooms_cache
 
 
-logger = logging.getLogger("myapp")
-logger.setLevel(logging.INFO)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("requests").setLevel(logging.WARNING)
-
-
 # Big function that goes through the data and builds tables that will be used in dataverse
 def build_relational_tables(
     payload: Dict[str, Any],
@@ -496,7 +490,7 @@ def extract_tables() -> Dict[str, Any]:
     
     # Calculate the amount of GB-seconds it would take to run this file, to calculate potential cost in Azure Functions
     r = m.result()
-    logger.info(
+    logging.info(
          f"COST[{r.name}] executions={r.billed_executions} duration_s={r.duration_s:.6f} "
         f"peak_rss_mb={r.peak_rss_mb:.1f} gb_seconds={r.sampled_gb_seconds:.6f}")
 

@@ -1,6 +1,6 @@
 import time
 
-from extractors.people_incremental import extraction_updates  # your extractor module name
+from extractors.people_extractor_delta import extraction_updates  # your extractor module name
 from dataverse.dataverse_keys_and_upsert import ensure_keys_and_upsert_all
 from utils.env_fetcher import DATAVERSE_ORG_URL
 

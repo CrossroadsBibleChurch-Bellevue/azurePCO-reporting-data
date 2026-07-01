@@ -122,6 +122,8 @@ def pco_get(path: str, auth: Tuple[str, str], params: Optional[Dict[str, str]] =
         # Get rate limiter
         LIMITER.acquire(1.0)
 
+        #print(url, params)
+
         # Send off that request and get a response from the API
         resp = s.get(url, auth=auth, params=params, timeout=45)
 
@@ -198,3 +200,15 @@ def pco_get_all_pages(
 
     # Return core data as well as the included data
     return {"data": all_data, "included": list(included_map.values())}
+
+# Give each thread worker its own independent request session
+def _get_thread_session() -> requests.Session:
+    # Get session for the current thread passed in
+    s = getattr(_thread_local, "session", None)
+    # If no session exists, create one for the thread, putting it in the thread local storage
+    if s is None:
+        s = requests.Session()
+        _thread_local.session = s
+    
+    # Return thread session
+    return s
