@@ -1,0 +1,3 @@
+Upserting only core attributes for 3 days worth of data takes 144 seconds to dataverse and 14 seconds to SQL
+Upserting all data for 3 days worth takes 600 seconds to dataverse and takes 18 seconds to SQL
+Upserting all data for the past month takes a whopping 10000 seconds to upserting to dataverse and only 46 seconds to SQL, most of which is getting data, taking 38 seconds, upserting only takes 7.5 seconds

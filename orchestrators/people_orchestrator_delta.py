@@ -2,6 +2,8 @@ import time
 
 from extractors.people_extractor_delta import extraction_updates  # your extractor module name
 from dataverse.dataverse_keys_and_upsert import ensure_keys_and_upsert_all
+#from dataverse.sql_manager import uploader
+from database.loader import uploader
 from utils.env_fetcher import DATAVERSE_ORG_URL
 
 
@@ -31,6 +33,7 @@ def main(client):
     t0 = time.perf_counter()
     tables = extraction_updates()
     t1 = time.perf_counter()
+    table = tables["core_attribute"]
 
     ensure_keys_and_upsert_all(
         dataverse_url=DATAVERSE_ORG_URL,
@@ -39,6 +42,7 @@ def main(client):
         key_plan=KEY_PLAN,
         client=client,
     )
+    #uploader(tables)
     t2 = time.perf_counter()
     print(f"Extract seconds: {t1 - t0:.2f}")
     print(f"Upload seconds:  {t2 - t1:.2f}")

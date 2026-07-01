@@ -10,3 +10,5 @@ python-dotenv
 azure-core
 powerplatform-dataverse-client
 psutil
+mssql-python
+pyodbc

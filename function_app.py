@@ -15,13 +15,13 @@ incremental fetch would be recorded.
 
 app = func.FunctionApp()
 
-@app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 0 16 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def deep_data_extraction(myTimer: func.TimerRequest) -> None:
     extractor_calendar(client)
     deep_extractor_people(client)
 
-@app.timer_trigger(schedule="0 */30 * * * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def regular_data_extraction(myTimer: func.TimerRequest) -> None:
     updates_extractor_people(client)
