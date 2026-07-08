@@ -1,5 +1,7 @@
 import time
 from typing import Any, Dict, List
+import sys
+import re
 
 import pyodbc
 
@@ -110,8 +112,12 @@ def load_staging(
     table_name: str,
     records: List[Dict[str, Any]],
     config: Dict[str, Any],
+    group_name: str,
 ) -> int:
-    staging_table = config["staging_table"]
+    if table_name == "group_attendance":
+        staging_table = f"dbo.PCO_GROUPS_{group_name}_STAGING"
+    else:
+        staging_table = config["staging_table"]
     column_map = config["column_map"]
     columns = list(column_map.keys())
 
@@ -130,8 +136,35 @@ def load_staging(
         staging_table=staging_table,
         columns=columns,
     )
+    #print(insert_sql)
 
-    cursor.executemany(insert_sql, rows)
+    #for i, value in enumerate(rows):
+    #    for val in value:
+    #        print(val, type(val))
+    try:
+        cursor.executemany(insert_sql, rows)
+    except pyodbc.Error as e:
+        print("Batch insert failed:")
+        print(e)
+
+        print("\nTesting rows one-by-one to find bad record...\n")
+
+        for i, row in enumerate(rows):
+            try:
+                cursor.execute(insert_sql, row)
+                #print(f"Row {i} successfully inserted")
+            except pyodbc.Error as row_error:
+                print(f"Bad row index: {i}")
+                print(f"Bad row data: {row}")
+                print(f"Error: {row_error}")
+
+                # Optional: print string lengths for that row
+                print("\nString field lengths:")
+                for col_index, value in enumerate(row):
+                    if isinstance(value, str):
+                        print(f"  Column position {col_index}: length={len(value)}, value={value!r}")
+
+                raise
 
     return len(rows)
 
@@ -140,9 +173,16 @@ def upsert_from_staging(
     conn: pyodbc.Connection,
     table_name: str,
     config: Dict[str, Any],
+    group_name: str,
 ) -> None:
-    target_table = config["target_table"]
-    staging_table = config["staging_table"]
+    if table_name == "group_attendance":
+        target_table = f"dbo.PCO_GROUPS_{group_name}"
+    else:
+        target_table = config["target_table"]
+    if table_name == "group_attendance":
+        staging_table = f"dbo.PCO_GROUPS_{group_name}_STAGING"
+    else:
+        staging_table = config["staging_table"]
     columns = list(config["column_map"].keys())
     key_columns = config["key_columns"]
 
@@ -156,11 +196,14 @@ def upsert_from_staging(
     cursor = conn.cursor()
     cursor.execute(sql)
 
+    cursor.execute(build_truncate_sql(staging_table))
+
 
 def process_table(
     conn: pyodbc.Connection,
     table_name: str,
     raw_records: Any,
+    group_name: str,
 ) -> None:
     start_time = time.perf_counter()
 
@@ -178,27 +221,70 @@ def process_table(
             table_name=table_name,
             records=records,
             config=config,
+            group_name=group_name,
         )
 
         upsert_from_staging(
             conn=conn,
             table_name=table_name,
             config=config,
+            group_name=group_name,
         )
 
         conn.commit()
 
         elapsed = round(time.perf_counter() - start_time, 2)
-        print(
-            f"Finished table '{table_name}'. "
-            f"Loaded {loaded_count}. "
-            f"Elapsed: {elapsed} seconds."
-        )
+        if table_name == "group_attendance":
+            print(
+                f"Finished table '{group_name}'. "
+                f"Loaded {loaded_count}. "
+                f"Elapsed: {elapsed} seconds."
+            )
+        else:
+            print(
+                f"Finished table '{table_name}'. "
+                f"Loaded {loaded_count}. "
+                f"Elapsed: {elapsed} seconds."
+            )
 
     except Exception:
         conn.rollback()
         print(f"Rolled back table '{table_name}' due to an error.")
         raise
+
+def update_delta_record(conn: pyodbc.Connection):
+    sql = f"""
+    BEGIN TRANSACTION;
+
+    UPDATE dbo.records
+    SET
+        RecordValue = SYSUTCDATETIME(),
+        LastUpdated = SYSUTCDATETIME()
+    WHERE RecordType = ?;
+
+    IF @@ROWCOUNT = 0
+    BEGIN
+        INSERT INTO dbo.records (
+            RecordType,
+            RecordValue,
+            LastUpdated
+        )
+        VALUES (
+            ?,
+            SYSUTCDATETIME(),
+            SYSUTCDATETIME()
+        );
+    END;
+
+    COMMIT TRANSACTION;
+    """
+
+    cursor = conn.cursor()
+    cursor.execute(sql,
+                   "PeopleDeltaRefresh",
+                   "PeopleDeltaRefresh")
+
+    conn.commit()
 
 
 def uploader(tables: Dict[str, Any]) -> None:
@@ -206,17 +292,35 @@ def uploader(tables: Dict[str, Any]) -> None:
         raise TypeError("tables must be a dictionary like {'people_core': records}.")
 
     conn = None
+    group_name = None
 
     try:
         conn = get_connection()
 
         for table_name, records in tables.items():
-            process_table(
-                conn=conn,
-                table_name=table_name,
-                raw_records=records,
-            )
+            if table_name == "group_attendance":
+                for value in records:
+                    group_name = value.get("group_name")
+                    group_name = re.sub(r"\s+", "_", group_name.strip())
+                    group_records = value.get("rows")
+                    process_table(
+                        conn=conn,
+                        table_name=table_name,
+                        raw_records=group_records,
+                        group_name=group_name
+                    )
+                #sys.exit(0)
+            else:
+                process_table(
+                    conn=conn,
+                    table_name=table_name,
+                    raw_records=records,
+                    group_name=group_name
+                )
+        
+        update_delta_record(conn)
 
     finally:
+        
         if conn is not None:
             conn.close()

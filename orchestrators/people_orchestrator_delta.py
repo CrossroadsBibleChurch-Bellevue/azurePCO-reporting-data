@@ -35,14 +35,14 @@ def main(client):
     t1 = time.perf_counter()
     table = tables["core_attribute"]
 
-    ensure_keys_and_upsert_all(
+    """ensure_keys_and_upsert_all(
         dataverse_url=DATAVERSE_ORG_URL,
         tables=tables,
         table_map=TABLE_MAP,
         key_plan=KEY_PLAN,
         client=client,
-    )
-    #uploader(tables)
+    )"""
+    uploader(tables)
     t2 = time.perf_counter()
     print(f"Extract seconds: {t1 - t0:.2f}")
     print(f"Upload seconds:  {t2 - t1:.2f}")

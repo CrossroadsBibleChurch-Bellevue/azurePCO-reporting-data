@@ -9,9 +9,10 @@ from extractors.api_fetcher import pco_get, _get_thread_session
 from utils.response_parsers import safe_get, index_included, process_person_from_payload
 from utils.env_fetcher import get_auth_from_env, PCO_PEOPLE_INCLUDE_PERSON, PCO_PEOPLE_INCLUDE_FIELD_DATA
 from utils.datatable_helpers import build_tables
+from database.fetch_record import fetch_updated_at
 
 
-updated_at_filter = os.getenv("PCO_UPDATED_SINCE")
+updated_at_filter = fetch_updated_at()
 
 
 def stop_when_older_than_cutoff(payload: Dict[str, Any]) -> bool:

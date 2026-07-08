@@ -1,3 +1,12 @@
+CREATE TABLE dbo.records
+(
+    Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    RecordType NVARCHAR(200) NULL,
+    RecordValue NVARCHAR(400) NULL,
+    LastUpdated NVARCHAR(200) NULL
+)
+
+
 CREATE TABLE dbo.PCO_People_Address_Staging
 (
     HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
@@ -60,7 +69,7 @@ CREATE TABLE dbo.PCO_People_CustomValue_Staging
     HashId NVARCHAR(200) PRIMARY KEY,
     PlanningCenterId INT NULL,
     CustomFieldHash NVARCHAR(100) NULL,
-    CustomValue NVARCHAR(500) NULL
+    CustomValue NVARCHAR(1000) NULL
 )
 
 CREATE TABLE dbo.PCO_People_Email_Staging
@@ -157,7 +166,7 @@ CREATE TABLE dbo.PCO_People_CustomValue
     HashId NVARCHAR(200) PRIMARY KEY,
     PlanningCenterId INT NULL,
     CustomFieldHash NVARCHAR(100) NULL,
-    CustomValue NVARCHAR(500) NULL
+    CustomValue NVARCHAR(1000) NULL
 )
 
 CREATE TABLE dbo.PCO_People_Email

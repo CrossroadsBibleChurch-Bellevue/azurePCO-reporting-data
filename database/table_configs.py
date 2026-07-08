@@ -1,3 +1,10 @@
+from datetime import datetime
+
+month = datetime.now().strftime("%B")
+year = datetime.now().year
+snapshot = f"{month}_{year}"
+
+
 TABLE_CONFIGS = {
     "address": {
         "target_table": "dbo.PCO_People_Address",
@@ -152,6 +159,68 @@ TABLE_CONFIGS = {
             "PrimaryLocation": "cr0b4_primary",
         },
     },
+
+    "group_overview": {
+        "target_table": "dbo.PCO_GROUPS_OVERVIEW",
+        "staging_table": "dbo.PCO_GROUPS_OVERVIEW_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "GroupID": "group_id",
+            "GroupName": "group_name",
+            "MemberCount": "member_count",
+            "EventCount": "event_count",
+            "AvgEventAttendance": "avg_event_attendance_rate",
+            "OverallAttendance": "overall_attendance_rate",
+            "TotalAttended": "total_attended",
+            "TotalAttendanceRecords": "total_attendance_records",
+            "ArchivedAt": "archived_at",
+        },
+    },
+
+    "group_snapshot": {
+        "target_table": f"dbo.PCO_GROUPS_{snapshot}_SNAPSHOT",
+        "staging_table": f"dbo.PCO_GROUPS_{snapshot}_SNAPSHOT_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "GroupID": "group_id",
+            "GroupName": "group_name",
+            "MembershipID": "membership_id",
+            "PersonID": "person_id",
+            "MemberName": "member_name",
+            "GroupRole": "role",
+            "JoinedAt": "joined_at"
+        },
+    },
+
+    "group_attendance": {
+        "target_table": "dbo.PCO_GROUPS_placeholder",
+        "staging_table": "dbo.PCO_GROUPS_placeholder_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "GroupID": "group_id",
+            "EventID": "event_id",
+            "EventName": "event_name",
+            "StartsAt": "starts_at",
+            "PersonID": "person_id",
+            "PersonName": "member_name",
+            "MembershipRole": "membership_role",
+            "Attended": "attended",
+            "AttendanceRecordExists": "attendance_record_exists",
+        },
+    },
+
 
     # Example pattern for another table:
     #
