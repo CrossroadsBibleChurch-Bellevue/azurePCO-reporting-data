@@ -2,7 +2,7 @@
 #from orchestrators.people_orchestrator import main as chonkSQL
 #from dataverse.credentials_urls import client
 #from database.fetch_record import fetch_updated_at
-from orchestrators.groups_orchestrator import main as groups
+from orchestrators.groups_orchestrator_delta import main as groups
 
 
 

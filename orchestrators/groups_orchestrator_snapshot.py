@@ -1,13 +1,14 @@
 import time
-from extractors.groups_extractor import extraction
+import sys
+from extractors.groups_extractor_snapshot import extraction
 from database.loader import uploader
-from database.prepper import table_prep
+from database.prepper import table_prep, wake_up_server
 
 def main():
     t0 = time.perf_counter()
+    wake_up_server()
     tables = extraction()
     t1 = time.perf_counter()
-    #print(tables)
 
     table_prep(tables)
 

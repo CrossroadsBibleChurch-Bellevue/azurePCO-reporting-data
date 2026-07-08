@@ -1,10 +1,19 @@
 import re
 import pyodbc
 import time
+import logging
 from typing import Dict, Any
-from database.database import get_connection
+from datetime import datetime
+from database.database import get_connection, connection_string
 
-def table_exists(table_name_raw: str, cursor, conn: pyodbc.Connection):
+def wake_up_server():
+    try:
+        pyodbc.connect(connection_string)
+        logging.info("Server awake")
+    except pyodbc.Error:
+        logging.info("Waking server up")
+
+def table_exists_attendance(table_name_raw: str, cursor, conn: pyodbc.Connection):
     table_name = f"PCO_GROUPS_{table_name_raw}"
     cursor.execute("""
         SELECT 1
@@ -15,7 +24,18 @@ def table_exists(table_name_raw: str, cursor, conn: pyodbc.Connection):
 
     return cursor.fetchone() is not None
 
-def create_table(table_name_raw: str, cursor, conn: pyodbc.Connection):
+def table_exists_snapshot(table_name_raw: str, cursor, conn: pyodbc.Connection):
+    table_name = f"PCO_GROUPS_{table_name_raw}_SNAPSHOT"
+    cursor.execute("""
+        SELECT 1
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_NAME = ?
+          AND TABLE_TYPE = 'BASE TABLE'
+    """, table_name)
+
+    return cursor.fetchone() is not None
+
+def create_table_attendance(table_name_raw: str, cursor, conn: pyodbc.Connection):
     table_name = f"PCO_GROUPS_{table_name_raw}"
 
     sql = f"""
@@ -50,8 +70,38 @@ def create_table(table_name_raw: str, cursor, conn: pyodbc.Connection):
     cursor.execute(sql)
     conn.commit()
     time.sleep(0.1)
-    if table_exists(table_name_raw, cursor, conn):
-        print("Table exists now")
+
+def create_table_snapshot(table_name_raw: str, cursor, conn: pyodbc.Connection):
+    table_name = f"PCO_GROUPS_{table_name_raw}"
+
+    sql = f"""
+    CREATE TABLE dbo.{table_name}_SNAPSHOT_STAGING
+    (
+        HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
+        GroupID INT NULL,
+        GroupName NVARCHAR(100) NULL,
+        MembershipID INT NULL,
+        PersonID INT NULL,
+        MemberName NVARCHAR(100) NULL,
+        GroupRole NVARCHAR(100) NULL,
+        JoinedAt NVARCHAR(200) NULL
+    )
+
+    CREATE TABLE dbo.{table_name}_SNAPSHOT
+    (
+        HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
+        GroupID INT NULL,
+        GroupName NVARCHAR(100) NULL,
+        MembershipID INT NULL,
+        PersonID INT NULL,
+        MemberName NVARCHAR(100) NULL,
+        GroupRole NVARCHAR(100) NULL,
+        JoinedAt NVARCHAR(200) NULL
+    )
+    """
+    cursor.execute(sql)
+    conn.commit()
+    time.sleep(0.1)
 
 def table_prep(tables: Dict[str, Any]) -> None:
     conn = None
@@ -64,15 +114,19 @@ def table_prep(tables: Dict[str, Any]) -> None:
             if table_name == "group_attendance":
                 for value in records:
                     group_name = value.get("group_name")
-                    group_name = re.sub(r"\s+", "_", group_name.strip())
-                    print(group_name)
-                    if table_exists(group_name, cursor, conn):
-                        print("Table exists")
+                    group_name = re.sub(r'[^A-Za-z0-9_]+', '', group_name.strip())
+                    if table_exists_attendance(group_name, cursor, conn):
                         pass
                     else:
-                        #print("Table does not exist, creating currently")
-                        create_table(group_name, cursor, conn)
-                    #print(type(value))
+                        create_table_attendance(group_name, cursor, conn)
+            elif table_name == "group_snapshot":
+                month = datetime.now().strftime("%B")
+                year = datetime.now().year
+                snapshot = f"{month}_{year}"
+                if table_exists_snapshot(table_name_raw=snapshot, cursor=cursor, conn=conn):
+                        pass
+                else:
+                    create_table_snapshot(table_name_raw=snapshot, cursor=cursor, conn=conn)
         
 
     finally:

@@ -1,6 +1,7 @@
 import time
 from typing import Any, Dict, List
 import sys
+import logging
 import re
 
 import pyodbc
@@ -136,33 +137,28 @@ def load_staging(
         staging_table=staging_table,
         columns=columns,
     )
-    #print(insert_sql)
 
-    #for i, value in enumerate(rows):
-    #    for val in value:
-    #        print(val, type(val))
     try:
         cursor.executemany(insert_sql, rows)
     except pyodbc.Error as e:
-        print("Batch insert failed:")
-        print(e)
+        logging.info("Batch insert failed:")
+        logging.info(e)
 
-        print("\nTesting rows one-by-one to find bad record...\n")
+        logging.info("\nTesting rows one-by-one to find bad record...\n")
 
         for i, row in enumerate(rows):
             try:
                 cursor.execute(insert_sql, row)
-                #print(f"Row {i} successfully inserted")
             except pyodbc.Error as row_error:
-                print(f"Bad row index: {i}")
-                print(f"Bad row data: {row}")
-                print(f"Error: {row_error}")
+                logging.info(f"Bad row index: {i}")
+                logging.info(f"Bad row data: {row}")
+                logging.info(f"Error: {row_error}")
 
-                # Optional: print string lengths for that row
-                print("\nString field lengths:")
+                # Optional: logging.info string lengths for that row
+                logging.info("\nString field lengths:")
                 for col_index, value in enumerate(row):
                     if isinstance(value, str):
-                        print(f"  Column position {col_index}: length={len(value)}, value={value!r}")
+                        logging.info(f"  Column position {col_index}: length={len(value)}, value={value!r}")
 
                 raise
 
@@ -214,7 +210,8 @@ def process_table(
     validate_records(table_name, records, config)
 
     try:
-        print(f"Processing table '{table_name}'...")
+        if table_name is not "group_attendance":
+            logging.info(f"Processing table '{table_name}'...")
 
         loaded_count = load_staging(
             conn=conn,
@@ -235,13 +232,9 @@ def process_table(
 
         elapsed = round(time.perf_counter() - start_time, 2)
         if table_name == "group_attendance":
-            print(
-                f"Finished table '{group_name}'. "
-                f"Loaded {loaded_count}. "
-                f"Elapsed: {elapsed} seconds."
-            )
+            pass
         else:
-            print(
+            logging.info(
                 f"Finished table '{table_name}'. "
                 f"Loaded {loaded_count}. "
                 f"Elapsed: {elapsed} seconds."
@@ -249,7 +242,7 @@ def process_table(
 
     except Exception:
         conn.rollback()
-        print(f"Rolled back table '{table_name}' due to an error.")
+        logging.info(f"Rolled back table '{table_name}' due to an error.")
         raise
 
 def update_delta_record(conn: pyodbc.Connection):
@@ -301,7 +294,7 @@ def uploader(tables: Dict[str, Any]) -> None:
             if table_name == "group_attendance":
                 for value in records:
                     group_name = value.get("group_name")
-                    group_name = re.sub(r"\s+", "_", group_name.strip())
+                    group_name = re.sub(r'[^A-Za-z0-9_]+', '', group_name.strip())
                     group_records = value.get("rows")
                     process_table(
                         conn=conn,
@@ -309,6 +302,9 @@ def uploader(tables: Dict[str, Any]) -> None:
                         raw_records=group_records,
                         group_name=group_name
                     )
+                logging.info(
+                    f"Finished table '{table_name}'. "
+                )
                 #sys.exit(0)
             else:
                 process_table(

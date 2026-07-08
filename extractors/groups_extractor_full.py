@@ -3,6 +3,7 @@
 import sys
 import time
 import os
+import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -10,8 +11,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urljoin
 
 
-from utils.env_fetcher import get_auth_from_env, max_event_pages, max_workers, group_limit, past_limit, future_limit, skip_attendance, skip_memberships, mode, include_archived
+from utils.env_fetcher import get_auth_from_env, max_event_pages, max_workers, mode, include_archived
 from utils.hasher import stable_hash_id
+from database.prepper import wake_up_server
 
 import requests
 
@@ -275,8 +277,6 @@ def fetch_events(client: PlanningCenterClient, max_event_pages: Optional[int]) -
 def classify_and_limit_events(
     events: List[Dict[str, Any]],
     mode: str,
-    past_limit: Optional[int],
-    future_limit: Optional[int],
 ) -> List[Dict[str, Any]]:
     """
     Classifies events as past/future based on ends_at when available, otherwise starts_at.
@@ -336,12 +336,12 @@ def classify_and_limit_events(
 
         if mode in ("past", "all"):
             selected_events.extend(
-                past_events[:past_limit] if past_limit is not None else past_events
+                past_events
             )
 
         if mode in ("future", "all"):
             selected_events.extend(
-                future_events[:future_limit] if future_limit is not None else future_events
+                future_events
             )
 
     return sorted(
@@ -515,59 +515,6 @@ def truncate_value(value: Any, max_length: int = 40) -> str:
     return text
 
 
-def print_table(
-    title: str,
-    rows: List[Dict[str, Any]],
-    columns: List[str],
-    limit: Optional[int] = 10,
-) -> None:
-    print()
-    print(title)
-    print("-" * len(title))
-
-    if not rows:
-        print("No rows returned.")
-        return
-
-    preview_rows = rows if limit is None else rows[:limit]
-
-    column_widths = {}
-
-    for column in columns:
-        header_width = len(column)
-        value_width = max(
-            len(truncate_value(row.get(column)))
-            for row in preview_rows
-        )
-        column_widths[column] = max(header_width, value_width)
-
-    header = " | ".join(
-        column.ljust(column_widths[column])
-        for column in columns
-    )
-
-    separator = "-+-".join(
-        "-" * column_widths[column]
-        for column in columns
-    )
-
-    print(header)
-    print(separator)
-
-    for row in preview_rows:
-        print(
-            " | ".join(
-                truncate_value(row.get(column)).ljust(column_widths[column])
-                for column in columns
-            )
-        )
-
-    if limit is None:
-        print(f"\nShowing all {len(rows)} rows.")
-    else:
-        print(f"\nShowing {min(limit, len(rows))} of {len(rows)} rows.")
-
-
 def full_name(person: Optional[Dict[str, Any]]) -> str:
     if not person:
         return ""
@@ -613,63 +560,7 @@ def build_group_overview_table_rows(output: Dict[str, Any]) -> List[Dict[str, An
 
     return rows
 
-def build_group_members_table_rows(output: Dict[str, Any]) -> List[Dict[str, Any]]:
-    rows = []
-    month = datetime.now().strftime("%B")
-    year = datetime.now().year
-    snapshot = f"{month}_{year}"
 
-    for group in output["groups"]:
-        group_id = group.get("id")
-        group_name = group.get("name")
-
-        for membership in group.get("memberships", []):
-            person = membership.get("person")
-
-            rows.append(
-                {
-                    "hash_id": stable_hash_id(f"snapshot_{snapshot}", group_id, membership.get("person_id")),
-                    "group_id": group_id,
-                    "group_name": group_name,
-                    "membership_id": membership.get("id"),
-                    "person_id": membership.get("person_id"),
-                    "member_name": full_name(person),
-                    "first_name": person.get("first_name") if person else "",
-                    "last_name": person.get("last_name") if person else "",
-                    "role": membership.get("role"),
-                    "joined_at": membership.get("joined_at"),
-                    "email_addresses": person.get("email_addresses") if person else "",
-                    "phone_numbers": person.get("phone_numbers") if person else "",
-                }
-            )
-
-    return rows
-
-def build_event_summary_table_rows(output: Dict[str, Any]) -> List[Dict[str, Any]]:
-    rows = []
-
-    for group in output["groups"]:
-        for event in group.get("events", []):
-            attendance = event.get("attendance", {})
-
-            rows.append(
-                {
-                    "group_id": group.get("id"),
-                    "group_name": group.get("name"),
-                    "event_id": event.get("id"),
-                    "event_name": event.get("name"),
-                    "starts_at": event.get("starts_at"),
-                    "ends_at": event.get("ends_at"),
-                    "classification": event.get("event_time_classification"),
-                    "canceled": event.get("canceled"),
-                    "attendance_records": attendance.get("attendance_record_count"),
-                    "attended_count": attendance.get("attended_count"),
-                    "attendance_rate": attendance.get("attendance_rate"),
-                    "visitors_count": event.get("visitors_count"),
-                }
-            )
-
-    return rows
 
 def build_member_attendance_tables_by_group(
     output: Dict[str, Any],
@@ -746,65 +637,59 @@ def build_member_attendance_tables_by_group(
 
 
 def extraction() -> Dict[str, Dict[str, Any]]:
-    tables: Dict[str, Dict[str, Any]] = {}
     t0 = time.perf_counter()
 
     app_id, secret = get_auth_from_env()
-    
-    
-    
 
 
     workers = max(1, int(max_workers))
     client = PlanningCenterClient(app_id=app_id, secret=secret)
 
-    print("Fetching groups...")
+    logging.info("Fetching groups...")
     groups = fetch_groups(client, include_archived=include_archived)
-
-    if group_limit is not None:
-        groups = groups[:group_limit]
 
     group_ids = {group["id"] for group in groups}
 
-    print("Fetching events...")
+    logging.info("Fetching events...")
     all_events = fetch_events(client, max_event_pages=max_event_pages)
     all_events = [event for event in all_events if event.get("group_id") in group_ids]
 
     selected_events = classify_and_limit_events(
         events=all_events,
-        mode=mode,
-        past_limit=int(past_limit),
-        future_limit=int(future_limit),
+        mode=mode
     )
 
     memberships_by_group: Dict[str, List[Dict[str, Any]]] = {}
 
-    if not skip_memberships:
-        print("Fetching memberships...")
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            future_map = {
-                executor.submit(fetch_memberships_for_group, client, group["id"]): group["id"]
-                for group in groups
-            }
+    logging.info("Fetching memberships...")
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        future_map = {
+            executor.submit(fetch_memberships_for_group, client, group["id"]): group["id"]
+            for group in groups
+        }
 
-            for future in as_completed(future_map):
-                group_id = future_map[future]
+        for future in as_completed(future_map):
+            group_id = future_map[future]
 
-                try:
-                    memberships_by_group[group_id] = future.result()
-                except Exception as exc:
-                    print(f"Membership fetch failed for group_id={group_id}: {exc}", file=sys.stderr)
-                    memberships_by_group[group_id] = []
+            try:
+                memberships_by_group[group_id] = future.result()
+            except Exception as exc:
+                logging.info(f"Membership fetch failed for group_id={group_id}: {exc}", file=sys.stderr)
+                memberships_by_group[group_id] = []
 
     attendance_by_event: Dict[str, Dict[str, Any]] = {}
 
-    if not skip_attendance:
-        print("Fetching attendance...")
-        attendance_by_event = fetch_attendance_for_events(
-            client=client,
-            events=selected_events,
-            workers=workers,
-        )
+    wake_up_server()
+
+    logging.info("Fetching attendance...")
+    attendance_by_event = fetch_attendance_for_events(
+        client=client,
+        events=selected_events,
+        workers=workers,
+    )
+
+    wake_up_server()
+    time.sleep(5)
 
     output = build_output(
         groups=groups,
@@ -814,73 +699,13 @@ def extraction() -> Dict[str, Dict[str, Any]]:
     )
 
     group_overview_rows = build_group_overview_table_rows(output)
-    group_members_rows = build_group_members_table_rows(output)
     attendance_tables_by_group = build_member_attendance_tables_by_group(output)
 
-    print("Done.")
-    print(f"Groups: {output['summary']['group_count']}")
-    print(f"Events returned: {output['summary']['event_count']}")
-    print(f"Attendance events returned: {output['summary']['attendance_event_count']}")
-
-    print_table(
-        title="Group Overview",
-        rows=group_overview_rows,
-        columns=[
-            "group_id",
-            "group_name",
-            "member_count",
-            "pco_memberships_count",
-            "event_count",
-            "avg_event_attendance_rate",
-            "overall_attendance_rate",
-            "total_attended",
-            "total_attendance_records",
-            "archived_at",
-        ],
-        limit=10,
-    )
-
-    print_table(
-        title="Group Members",
-        rows=group_members_rows,
-        columns=[
-            "group_id",
-            "group_name",
-            "membership_id",
-            "person_id",
-            "member_name",
-            "role",
-            "joined_at",
-            "email_addresses",
-            "phone_numbers",
-        ],
-        limit=50,
-    )
-
-    for group_table in attendance_tables_by_group.values():
-        print_table(
-            title=f"Attendance Table - {group_table['group_name']} ({group_table['group_id']})",
-            rows=group_table["rows"],
-            columns=[
-                "event_id",
-                "event_name",
-                "starts_at",
-                "person_id",
-                "member_name",
-                "membership_role",
-                "attendance_role",
-                "attended",
-                "attendance_record_exists",
-            ],
-            limit=10,
-        )
-        break
     t1 = time.perf_counter()
-    print(f"Total time taken: {t1 - t0:.2f}" )
+    logging.info(f"Total time taken: {t1 - t0:.2f}" )
 
     return {
         "group_overview": list(group_overview_rows),
-        "group_snapshot": list(group_members_rows),
         "group_attendance": list(attendance_tables_by_group.values())
     }
 

@@ -1,9 +1,7 @@
 import time
 
-from extractors.people_extractor import extraction  # your extractor module name
-from dataverse.dataverse_keys_and_upsert import ensure_keys_and_upsert_all
+from extractors.people_extractor import extraction
 from database.loader import uploader
-from utils.env_fetcher import DATAVERSE_ORG_URL
 
 
 TABLE_MAP = {
@@ -33,13 +31,6 @@ def main(client):
     tables = extraction()
     t1 = time.perf_counter()
 
-    """ensure_keys_and_upsert_all(
-        dataverse_url=DATAVERSE_ORG_URL,
-        tables=tables,
-        table_map=TABLE_MAP,
-        key_plan=KEY_PLAN,
-        client=client,
-    )"""
     uploader(tables)
     t2 = time.perf_counter()
     print(f"Extract seconds: {t1 - t0:.2f}")
