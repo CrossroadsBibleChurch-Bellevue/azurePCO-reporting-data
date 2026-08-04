@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from extractors.schemas.people_schemas import build_row_people
 import re
+import sys
 
 def sanitize_schema_name(name: str) -> str:
     n = re.sub(r"[^A-Za-z0-9_]", "_", name)
@@ -53,6 +54,9 @@ def build_tables(parsed: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]) -> Dic
                         }
                     ), pk="cr0b4_hash_id")
                 elif table == "core_attributes":
+                    #print(dict_level4.get("school"))
+                    #print(dict_level4)
+                    #sys.exit(0)
                     upsert_row(core_attributes, build_row_people(
                         "core_attribute",
                         {"person_id": person_id,

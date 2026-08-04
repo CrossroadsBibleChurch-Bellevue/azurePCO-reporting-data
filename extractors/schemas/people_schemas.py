@@ -7,6 +7,10 @@ from utils.hasher import stable_hash_id
 # the schema as needed. If a new variable needs to be passed through, you will need to do that in the corresponding file and add that in.
 # To add a schema, follow the other schemas below as an example and make sure that you pass through the right variables in the corresponding file that uses the schema
 
+
+# Need to change the hash for custom values since it won't properly be upserted if it is changed, since that would change the hash
+# Might need to change other ones as well
+
 RowContext = Dict[str, Any]
 FieldGetter = Callable[[RowContext], Any]
 RowSchema = Dict[str, FieldGetter]
@@ -14,7 +18,7 @@ RowSchema = Dict[str, FieldGetter]
 
 SCHEMAS: Dict[str, RowSchema] = {
     "address": {
-        "cr0b4_hash_id": lambda c: stable_hash_id("address", c["person_id"], c["chunk"].get("zip")),
+        "cr0b4_hash_id": lambda c: stable_hash_id("address", c["person_id"], c["chunk"].get("location")),
         "cr0b4_person_id": lambda c: c["person_id"],
         "cr0b4_city": lambda c: c["chunk"].get("city"),
         "cr0b4_country_code": lambda c: c["chunk"].get("country_code"),
@@ -68,14 +72,14 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "custom_values": {
-        "cr0b4_hash_id": lambda c: stable_hash_id("custom_values", c["person_id"], c["chunk"].get("field_value"), stable_hash_id("custom_fields", c["chunk"].get("field_id"))),
+        "cr0b4_hash_id": lambda c: stable_hash_id("custom_values", c["person_id"], stable_hash_id("custom_fields", c["chunk"].get("field_id"))),
         "cr0b4_custom_field_hash": lambda c: stable_hash_id("custom_fields", c["chunk"].get("field_id")),
         "cr0b4_value": lambda c: c["chunk"].get("field_value"),
         "cr0b4_person_id": lambda c: c["person_id"],
     },
 
     "emails": {
-        "cr0b4_hash_id": lambda c: stable_hash_id("emails", c["person_id"], c["chunk"].get("address")),
+        "cr0b4_hash_id": lambda c: stable_hash_id("emails", c["person_id"], c["chunk"].get("location")),
         "cr0b4_people_id": lambda c: c["person_id"],
         "cr0b4_address": lambda c: c["chunk"].get("address"),
         "cr0b4_location": lambda c: c["chunk"].get("location"),
@@ -83,7 +87,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "household": {
-        "cr0b4_hash_id": lambda c: stable_hash_id("households", c["person_id"], c["chunk"].get("household_id")),
+        "cr0b4_hash_id": lambda c: stable_hash_id("households", c["person_id"]),
         "cr0b4_person_id": lambda c: c["person_id"],
         "cr0b4_household_id": lambda c: c["chunk"].get("household_id"),
         "cr0b4_name": lambda c: None if c["chunk"].get("household_id") == "N/A" else c["chunk"].get("name"),
@@ -93,7 +97,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "phones": {
-        "cr0b4_hash_id": lambda c: stable_hash_id("phones", c["person_id"], c["chunk"].get("number")),
+        "cr0b4_hash_id": lambda c: stable_hash_id("phones", c["person_id"], c["chunk"].get("location")),
         "cr0b4_people_id": lambda c: c["person_id"],
         "cr0b4_country_code": lambda c: c["chunk"].get("country_code"),
         "cr0b4_number": lambda c: c["chunk"].get("number"),

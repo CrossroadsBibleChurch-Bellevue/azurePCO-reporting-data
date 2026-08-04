@@ -1,0 +1,461 @@
+CREATE TABLE dbo.records
+(
+    Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    RecordType NVARCHAR(200) NULL,
+    RecordValue NVARCHAR(400) NULL,
+    LastUpdated NVARCHAR(200) NULL
+)
+
+
+CREATE TABLE dbo.PCO_People_Address_Staging
+(
+    HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    City NVARCHAR(100) NULL,
+    CountryCode NVARCHAR(100) NULL,
+    CountryName NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL,
+    State NVARCHAR(100) NULL,
+    StreetLine1 NVARCHAR(400) NULL,
+    StreetLine2 NVARCHAR(100) NULL,
+    Zip NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Core_Staging
+(
+    PlanningCenterId INT NOT NULL PRIMARY KEY,
+    BirthDate NVARCHAR(500) NULL,
+    Child NVARCHAR(500) NULL,
+    CreatedAt NVARCHAR(500) NULL,
+    CurrentStatus NVARCHAR(500) NULL,
+    FirstName NVARCHAR(500) NULL,
+    FullName NVARCHAR(500) NULL,
+    Gender NVARCHAR(500) NULL,
+    GivenName NVARCHAR(500) NULL,
+    Grade NVARCHAR(500) NULL,
+    GraduationYear NVARCHAR(500) NULL,
+    InactivatedAt NVARCHAR(500) NULL,
+    InactiveReason NVARCHAR(500) NULL,
+    LastName NVARCHAR(500) NULL,
+    MaritalStatus NVARCHAR(500) NULL,
+    MedicalNotes NVARCHAR(500) NULL,
+    Membership NVARCHAR(500) NULL,
+    MiddleName NVARCHAR(500) NULL,
+    NickName NVARCHAR(500) NULL,
+    PassedBackgroundCheck NVARCHAR(500) NULL,
+    UpdatedAt NVARCHAR(500) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomFields_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    FieldDataType NVARCHAR(100) NULL,
+    FieldId NVARCHAR(100) NULL,
+    FieldName NVARCHAR(100) NULL,
+    FieldTabId NVARCHAR(100) NULL,
+    FieldTabName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomTabs_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    TabId NVARCHAR(100) NULL,
+    TabName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomValue_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    CustomFieldHash NVARCHAR(100) NULL,
+    CustomValue NVARCHAR(1000) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Email_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    EmailAddress NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Household_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    HouseholdId NVARCHAR(100) NULL,
+    HouseholdName NVARCHAR(100) NULL,
+    MemberCount NVARCHAR(100) NULL,
+    PrimaryContactId NVARCHAR(100) NULL,
+    PrimaryContactName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Phone_Staging
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    CountryCode NVARCHAR(100) NULL,
+    PhoneNumber NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL
+)
+
+
+
+
+CREATE TABLE dbo.PCO_People_Address
+(
+    HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    City NVARCHAR(100) NULL,
+    CountryCode NVARCHAR(100) NULL,
+    CountryName NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL,
+    State NVARCHAR(100) NULL,
+    StreetLine1 NVARCHAR(400) NULL,
+    StreetLine2 NVARCHAR(100) NULL,
+    Zip NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Core
+(
+    PlanningCenterId INT NOT NULL PRIMARY KEY,
+    BirthDate NVARCHAR(500) NULL,
+    Child NVARCHAR(500) NULL,
+    CreatedAt NVARCHAR(500) NULL,
+    CurrentStatus NVARCHAR(500) NULL,
+    FirstName NVARCHAR(500) NULL,
+    FullName NVARCHAR(500) NULL,
+    Gender NVARCHAR(500) NULL,
+    GivenName NVARCHAR(500) NULL,
+    Grade NVARCHAR(500) NULL,
+    GraduationYear NVARCHAR(500) NULL,
+    InactivatedAt NVARCHAR(500) NULL,
+    InactiveReason NVARCHAR(500) NULL,
+    LastName NVARCHAR(500) NULL,
+    MaritalStatus NVARCHAR(500) NULL,
+    MedicalNotes NVARCHAR(500) NULL,
+    Membership NVARCHAR(500) NULL,
+    MiddleName NVARCHAR(500) NULL,
+    NickName NVARCHAR(500) NULL,
+    PassedBackgroundCheck NVARCHAR(500) NULL,
+    UpdatedAt NVARCHAR(500) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomFields
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    FieldDataType NVARCHAR(100) NULL,
+    FieldId NVARCHAR(100) NULL,
+    FieldName NVARCHAR(100) NULL,
+    FieldTabId NVARCHAR(100) NULL,
+    FieldTabName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomTabs
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    TabId NVARCHAR(100) NULL,
+    TabName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_CustomValue
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    CustomFieldHash NVARCHAR(100) NULL,
+    CustomValue NVARCHAR(1000) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Email
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    EmailAddress NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Household
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    HouseholdId NVARCHAR(100) NULL,
+    HouseholdName NVARCHAR(100) NULL,
+    MemberCount NVARCHAR(100) NULL,
+    PrimaryContactId NVARCHAR(100) NULL,
+    PrimaryContactName NVARCHAR(100) NULL
+)
+
+CREATE TABLE dbo.PCO_People_Phone
+(
+    HashId NVARCHAR(200) PRIMARY KEY,
+    PlanningCenterId INT NULL,
+    CountryCode NVARCHAR(100) NULL,
+    PhoneNumber NVARCHAR(100) NULL,
+    Location NVARCHAR(100) NULL,
+    PrimaryLocation NVARCHAR(100) NULL
+)
+
+
+/* ============================================================
+   GROUP QUERIES
+   ============================================================ */
+
+CREATE TABLE dbo.PCO_GROUPS_overview
+(
+    GroupID                 BIGINT             NOT NULL,
+    GroupName               NVARCHAR(500)      NULL,
+    GroupTypeID             BIGINT             NULL,
+    MemberCount             INT                NULL,
+    PCOMembershipCount      INT                NULL,
+    EventCount              INT                NULL,
+    TotalAttended           INT                NULL,
+    TotalAttendanceRecords  INT                NULL,
+    CreatedAt               DATETIMEOFFSET(7)  NULL,
+    ArchivedAt              DATETIMEOFFSET(7)  NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_overview
+        PRIMARY KEY CLUSTERED (GroupID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_overview_STAGING
+(
+    GroupID                 BIGINT             NOT NULL,
+    GroupName               NVARCHAR(500)      NULL,
+    GroupTypeID             BIGINT             NULL,
+    MemberCount             INT                NULL,
+    PCOMembershipCount      INT                NULL,
+    EventCount              INT                NULL,
+    TotalAttended           INT                NULL,
+    TotalAttendanceRecords  INT                NULL,
+    CreatedAt               DATETIMEOFFSET(7)  NULL,
+    ArchivedAt              DATETIMEOFFSET(7)  NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_types
+(
+    GroupTypeID          BIGINT          NOT NULL,
+    GroupTypeName        NVARCHAR(500)   NULL,
+    ChurchCenterVisible  BIT             NULL,
+    GroupCount           INT             NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_types
+        PRIMARY KEY CLUSTERED (GroupTypeID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_types_STAGING
+(
+    GroupTypeID          BIGINT          NOT NULL,
+    GroupTypeName        NVARCHAR(500)   NULL,
+    ChurchCenterVisible  BIT             NULL,
+    GroupCount           INT             NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_group_tags
+(
+    HashID   NVARCHAR(200)  NOT NULL,
+    GroupID  BIGINT       NULL,
+    TagID    BIGINT       NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_group_tags
+        PRIMARY KEY CLUSTERED (HashID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_group_tags_STAGING
+(
+    HashID   NVARCHAR(200)  NOT NULL,
+    GroupID  BIGINT       NULL,
+    TagID    BIGINT       NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_tags
+(
+    TagID       BIGINT          NOT NULL,
+    TagGroupID  BIGINT          NULL,
+    TagName     NVARCHAR(500)   NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_tags
+        PRIMARY KEY CLUSTERED (TagID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_tags_STAGING
+(
+    TagID       BIGINT          NOT NULL,
+    TagGroupID  BIGINT          NULL,
+    TagName     NVARCHAR(500)   NULL
+);
+GO
+
+
+CREATE TABLE dbo.PCO_GROUPS_tag_groups
+(
+    TagGroupID             BIGINT          NOT NULL,
+    TagGroupName           NVARCHAR(500)   NULL,
+    DisplayPublicly        BIT             NULL,
+    MultipleOptionsEnabled BIT             NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_tag_groups
+        PRIMARY KEY CLUSTERED (TagGroupID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_tag_groups_STAGING
+(
+    TagGroupID             BIGINT          NOT NULL,
+    TagGroupName           NVARCHAR(500)   NULL,
+    DisplayPublicly        BIT             NULL,
+    MultipleOptionsEnabled BIT             NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Events
+(
+    EventID                 BIGINT          NOT NULL,
+    PCORepeatingEventID     BIGINT          NULL,
+    GroupID                 BIGINT          NULL,
+    EventName               NVARCHAR(500)   NULL,
+    Repeating               BIT             NULL,
+    InstanceCount           INT             NULL,
+    LocationTypePreference  NVARCHAR(100)   NULL,
+    LocationID              BIGINT          NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_Events
+        PRIMARY KEY CLUSTERED (EventID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Events_Staging
+(
+    EventID                 BIGINT          NOT NULL,
+    PCORepeatingEventID     BIGINT          NULL,
+    GroupID                 BIGINT          NULL,
+    EventName               NVARCHAR(500)   NULL,
+    Repeating               BIT             NULL,
+    InstanceCount           INT             NULL,
+    LocationTypePreference  NVARCHAR(100)   NULL,
+    LocationID              BIGINT          NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Event_Instances
+(
+    EventInstanceID  BIGINT             NOT NULL,
+    EventID          BIGINT             NULL,
+    EventName        NVARCHAR(500)      NULL,
+    StartsAt         DATETIMEOFFSET(7)  NULL,
+    EndsAt           DATETIMEOFFSET(7)  NULL,
+    Canceled         BIT                NULL,
+    VisitorsCount    INT                NULL,
+    Classification   NVARCHAR(100)      NULL,
+    LocationID       BIGINT             NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_Event_Instances
+        PRIMARY KEY CLUSTERED (EventInstanceID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Event_Instances_Staging
+(
+    EventInstanceID  BIGINT             NOT NULL,
+    EventID          BIGINT             NULL,
+    EventName        NVARCHAR(500)      NULL,
+    StartsAt         DATETIMEOFFSET(7)  NULL,
+    EndsAt           DATETIMEOFFSET(7)  NULL,
+    Canceled         BIT                NULL,
+    VisitorsCount    INT                NULL,
+    Classification   NVARCHAR(100)      NULL,
+    LocationID       BIGINT             NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Event_Attendances
+(
+    HashID                   NVARCHAR(200)      NOT NULL,
+    EventInstanceID          BIGINT           NULL,
+    EventName                NVARCHAR(500)    NULL,
+    PersonID                 BIGINT           NULL,
+    CurrentGroupMember       BIT              NULL,
+    MembershipRole           NVARCHAR(100)    NULL,
+    AttendanceID             BIGINT           NULL,
+    AttendanceRole           NVARCHAR(100)    NULL,
+    Attended                  BIT              NULL,
+    AttendanceRecordExists   BIT              NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_Event_Attendances
+        PRIMARY KEY CLUSTERED (HashID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Event_Attendances_Staging
+(
+    HashID                   NVARCHAR(200)      NOT NULL,
+    EventInstanceID          BIGINT           NULL,
+    EventName                NVARCHAR(500)    NULL,
+    PersonID                 BIGINT           NULL,
+    CurrentGroupMember       BIT              NULL,
+    MembershipRole           NVARCHAR(100)    NULL,
+    AttendanceID             BIGINT           NULL,
+    AttendanceRole           NVARCHAR(100)    NULL,
+    Attended                  BIT              NULL,
+    AttendanceRecordExists   BIT              NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Members
+(
+    MembershipID  BIGINT             NOT NULL,
+    PersonID      BIGINT             NULL,
+    GroupID       BIGINT             NULL,
+    Role          NVARCHAR(100)      NULL,
+    JoinedAt      DATETIMEOFFSET(7)  NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_Members
+        PRIMARY KEY CLUSTERED (MembershipID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Members_Staging
+(
+    MembershipID  BIGINT             NOT NULL,
+    PersonID      BIGINT             NULL,
+    GroupID       BIGINT             NULL,
+    Role          NVARCHAR(100)      NULL,
+    JoinedAt      DATETIMEOFFSET(7)  NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Members_History
+(
+    MembershipID  BIGINT             NOT NULL,
+    PersonID      BIGINT             NULL,
+    GroupID       BIGINT             NULL,
+    Role          NVARCHAR(100)      NULL,
+    JoinedAt      DATETIMEOFFSET(7)  NULL,
+    LeftAt        DATETIMEOFFSET(7)  NULL,
+
+    CONSTRAINT PK_PCO_GROUPS_Members_History
+        PRIMARY KEY CLUSTERED (MembershipID)
+);
+GO
+
+CREATE TABLE dbo.PCO_GROUPS_Members_History_Staging
+(
+    MembershipID  BIGINT             NOT NULL,
+    PersonID      BIGINT             NULL,
+    GroupID       BIGINT             NULL,
+    Role          NVARCHAR(100)      NULL,
+    JoinedAt      DATETIMEOFFSET(7)  NULL,
+    LeftAt        DATETIMEOFFSET(7)  NULL
+);
+GO

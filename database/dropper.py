@@ -2,21 +2,27 @@ import pyodbc
 import os
 from typing import List, Optional
 from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from database import get_connection
 
 load_dotenv()
+
+
+SQL_COPT_SS_ACCESS_TOKEN = 1256
+TOKEN_SCOPE = "https://database.windows.net/.default"
+
+credential = DefaultAzureCredential()
 
 connection_string = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
     f"SERVER={os.getenv('AZURE_SQL_SERVER')},1433;"
     f"DATABASE={os.getenv('AZURE_SQL_DATABASE')};"
-    f"UID={os.getenv('AZURE_SQL_USERNAME')};"
-    f"PWD={os.getenv('AZURE_SQL_PASSWORD')};"
     "Encrypt=yes;"
     "TrustServerCertificate=no;"
     "Connection Timeout=30;"
 )
 
-conn = pyodbc.connect(connection_string)
+conn = get_connection()
 conn.autocommit = False
 
 def drop_tables_with_prefix(
@@ -26,7 +32,7 @@ def drop_tables_with_prefix(
     dry_run: bool = True,
 ) -> List[str]:
     """
-    Drop all SQL Serverse names start with the given prefix.
+    Drop all SQL server names start with the given prefix.
 
     Args:
         conn: Existing pyodbc SQL Server connection.

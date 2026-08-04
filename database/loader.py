@@ -115,10 +115,7 @@ def load_staging(
     config: Dict[str, Any],
     group_name: str,
 ) -> int:
-    if table_name == "group_attendance":
-        staging_table = f"dbo.PCO_GROUPS_{group_name}_STAGING"
-    else:
-        staging_table = config["staging_table"]
+    staging_table = config["staging_table"]
     column_map = config["column_map"]
     columns = list(column_map.keys())
 
@@ -140,27 +137,108 @@ def load_staging(
 
     try:
         cursor.executemany(insert_sql, rows)
-    except pyodbc.Error as e:
-        logging.info("Batch insert failed:")
-        logging.info(e)
+    except pyodbc.Error:
+        logging.exception(
+            "Batch insert failed for table '%s' using staging table '%s'.",
+            table_name,
+            staging_table,
+        )
 
-        logging.info("\nTesting rows one-by-one to find bad record...\n")
+        # Remove any rows that may have been partially inserted by executemany().
+        conn.rollback()
 
-        for i, row in enumerate(rows):
+        diagnostic_cursor = conn.cursor()
+        diagnostic_cursor.execute(build_truncate_sql(staging_table))
+
+        source_keys = list(column_map.values())
+
+        logging.info("Testing rows individually to locate the bad value...")
+
+        for row_index, row in enumerate(rows):
             try:
-                cursor.execute(insert_sql, row)
+                diagnostic_cursor.execute(insert_sql, row)
+
             except pyodbc.Error as row_error:
-                logging.info(f"Bad row index: {i}")
-                logging.info(f"Bad row data: {row}")
-                logging.info(f"Error: {row_error}")
+                logging.error("=" * 80)
+                logging.error("INSERT FAILURE DETAILS")
+                logging.error("Logical table name: %s", table_name)
+                logging.error("SQL staging table: %s", staging_table)
+                logging.error("Record index: %d", row_index)
+                logging.error("SQL error: %s", row_error)
+                logging.error("=" * 80)
 
-                # Optional: logging.info string lengths for that row
-                logging.info("\nString field lengths:")
-                for col_index, value in enumerate(row):
+                original_record = records[row_index]
+
+                logging.error("Values in the failing row:")
+
+                for position, (sql_column, source_key, value) in enumerate(
+                    zip(columns, source_keys, row)
+                ):
+                    logging.error(
+                        "Position=%d | SQL column=%s | Source variable=%s | "
+                        "Python type=%s | Value=%r",
+                        position,
+                        sql_column,
+                        source_key,
+                        type(value).__name__,
+                        value,
+                    )
+
+                logging.error("Original source record: %r", original_record)
+
+                # Specifically flag values that look suspicious for bigint columns.
+                logging.error("Potential invalid integer values:")
+
+                suspicious_value_found = False
+
+                for sql_column, source_key, value in zip(
+                    columns,
+                    source_keys,
+                    row,
+                ):
+                    if value is None:
+                        continue
+
+                    # Empty strings and non-numeric strings commonly cause:
+                    # "Error converting data type nvarchar to bigint."
                     if isinstance(value, str):
-                        logging.info(f"  Column position {col_index}: length={len(value)}, value={value!r}")
+                        stripped_value = value.strip()
 
-                raise
+                        if stripped_value == "":
+                            suspicious_value_found = True
+                            logging.error(
+                                "SQL column=%s | Source variable=%s | "
+                                "Value is an empty string",
+                                sql_column,
+                                source_key,
+                            )
+                        else:
+                            try:
+                                int(stripped_value)
+                            except ValueError:
+                                suspicious_value_found = True
+                                logging.error(
+                                    "SQL column=%s | Source variable=%s | "
+                                    "Value cannot be converted to an integer: %r",
+                                    sql_column,
+                                    source_key,
+                                    value,
+                                )
+
+                if not suspicious_value_found:
+                    logging.error(
+                        "No obvious invalid integer string was found. "
+                        "Compare the logged values against the SQL staging "
+                        "table data types."
+                    )
+
+                raise RuntimeError(
+                    f"Failed loading logical table '{table_name}', "
+                    f"staging table '{staging_table}', "
+                    f"record index {row_index}. "
+                    f"See the preceding log entries for the SQL column, "
+                    f"source variable, type, and value."
+                ) from row_error
 
     return len(rows)
 
@@ -171,14 +249,8 @@ def upsert_from_staging(
     config: Dict[str, Any],
     group_name: str,
 ) -> None:
-    if table_name == "group_attendance":
-        target_table = f"dbo.PCO_GROUPS_{group_name}"
-    else:
-        target_table = config["target_table"]
-    if table_name == "group_attendance":
-        staging_table = f"dbo.PCO_GROUPS_{group_name}_STAGING"
-    else:
-        staging_table = config["staging_table"]
+    target_table = config["target_table"]
+    staging_table = config["staging_table"]
     columns = list(config["column_map"].keys())
     key_columns = config["key_columns"]
 
@@ -190,9 +262,38 @@ def upsert_from_staging(
     )
 
     cursor = conn.cursor()
-    cursor.execute(sql)
 
-    cursor.execute(build_truncate_sql(staging_table))
+    try:
+        cursor.execute(sql)
+        cursor.execute(build_truncate_sql(staging_table))
+
+    except pyodbc.Error as error:
+        logging.exception(
+            "UPSERT FAILED | LogicalTable=%s | TargetTable=%s | "
+            "StagingTable=%s | KeyColumns=%s",
+            table_name,
+            target_table,
+            staging_table,
+            key_columns,
+        )
+
+        for argument_index, argument in enumerate(error.args):
+            logging.error(
+                "pyodbc error argument %d: %r",
+                argument_index,
+                argument,
+            )
+
+        logging.error("Generated upsert SQL:\n%s", sql)
+
+        raise
+
+def stored_proc(conn: pyodbc.Connection):
+    cursor = conn.cursor()
+
+    cursor.execute("EXEC dbo.SyncGroupMemberships;")
+
+    conn.commit()
 
 
 def process_table(
@@ -202,17 +303,26 @@ def process_table(
     group_name: str,
 ) -> None:
     start_time = time.perf_counter()
-
-    config = get_table_config(table_name)
-    validate_table_config(table_name, config)
-
-    records = normalize_records(raw_records)
-    validate_records(table_name, records, config)
+    phase = "initialization"
 
     try:
-        if table_name is not "group_attendance":
-            logging.info(f"Processing table '{table_name}'...")
+        phase = "loading table configuration"
+        config = get_table_config(table_name)
+        validate_table_config(table_name, config)
 
+        phase = "normalizing records"
+        records = normalize_records(raw_records)
+
+        phase = "validating records"
+        validate_records(table_name, records, config)
+
+        logging.info(
+            "Processing table '%s' with %d records...",
+            table_name,
+            len(records),
+        )
+
+        phase = "loading staging table"
         loaded_count = load_staging(
             conn=conn,
             table_name=table_name,
@@ -221,28 +331,71 @@ def process_table(
             group_name=group_name,
         )
 
-        upsert_from_staging(
-            conn=conn,
-            table_name=table_name,
-            config=config,
-            group_name=group_name,
-        )
-
-        conn.commit()
-
-        elapsed = round(time.perf_counter() - start_time, 2)
-        if table_name == "group_attendance":
-            pass
+        phase = "upserting staging data into target table"
+        if table_name == "group_members_history":
+            stored_proc(conn=conn)
         else:
-            logging.info(
-                f"Finished table '{table_name}'. "
-                f"Loaded {loaded_count}. "
-                f"Elapsed: {elapsed} seconds."
+            upsert_from_staging(
+                conn=conn,
+                table_name=table_name,
+                config=config,
+                group_name=group_name,
             )
 
-    except Exception:
-        conn.rollback()
-        logging.info(f"Rolled back table '{table_name}' due to an error.")
+        phase = "committing transaction"
+        conn.commit()
+
+        elapsed = time.perf_counter() - start_time
+
+        logging.info(
+            "Finished table '%s'. Loaded %d records. Elapsed: %.2f seconds.",
+            table_name,
+            loaded_count,
+            elapsed,
+        )
+
+    except Exception as error:
+        elapsed = time.perf_counter() - start_time
+
+        # logging.exception automatically includes the complete traceback.
+        logging.exception(
+            "TABLE PROCESSING FAILED | "
+            "Table=%s | Phase=%s | ExceptionType=%s | "
+            "ExceptionMessage=%s | Elapsed=%.2f seconds",
+            table_name,
+            phase,
+            type(error).__name__,
+            str(error),
+            elapsed,
+        )
+
+        # pyodbc exceptions often contain SQLSTATE and native SQL Server details.
+        if isinstance(error, pyodbc.Error):
+            logging.error("pyodbc diagnostic arguments:")
+
+            for argument_index, argument in enumerate(error.args):
+                logging.error(
+                    "pyodbc error argument %d: %r",
+                    argument_index,
+                    argument,
+                )
+
+        try:
+            conn.rollback()
+        except Exception:
+            logging.exception(
+                "ROLLBACK FAILED | Table=%s | OriginalPhase=%s",
+                table_name,
+                phase,
+            )
+        else:
+            logging.error(
+                "Rolled back table '%s' because an error occurred "
+                "during phase '%s'.",
+                table_name,
+                phase,
+            )
+
         raise
 
 def update_delta_record(conn: pyodbc.Connection):
@@ -280,7 +433,7 @@ def update_delta_record(conn: pyodbc.Connection):
     conn.commit()
 
 
-def uploader(tables: Dict[str, Any]) -> None:
+def uploader(tables: Dict[str, Any], endpoint) -> None:
     if not isinstance(tables, dict):
         raise TypeError("tables must be a dictionary like {'people_core': records}.")
 
@@ -291,30 +444,15 @@ def uploader(tables: Dict[str, Any]) -> None:
         conn = get_connection()
 
         for table_name, records in tables.items():
-            if table_name == "group_attendance":
-                for value in records:
-                    group_name = value.get("group_name")
-                    group_name = re.sub(r'[^A-Za-z0-9_]+', '', group_name.strip())
-                    group_records = value.get("rows")
-                    process_table(
-                        conn=conn,
-                        table_name=table_name,
-                        raw_records=group_records,
-                        group_name=group_name
-                    )
-                logging.info(
-                    f"Finished table '{table_name}'. "
-                )
-                #sys.exit(0)
-            else:
-                process_table(
-                    conn=conn,
-                    table_name=table_name,
-                    raw_records=records,
-                    group_name=group_name
-                )
-        
-        update_delta_record(conn)
+            process_table(
+                conn=conn,
+                table_name=table_name,
+                raw_records=records,
+                group_name=group_name
+            )
+
+        if endpoint == "people":
+            update_delta_record(conn)
 
     finally:
         

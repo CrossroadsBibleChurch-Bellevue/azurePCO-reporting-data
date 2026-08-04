@@ -159,65 +159,265 @@ TABLE_CONFIGS = {
             "PrimaryLocation": "cr0b4_primary",
         },
     },
+    
 
     "group_overview": {
-        "target_table": "dbo.PCO_GROUPS_OVERVIEW",
-        "staging_table": "dbo.PCO_GROUPS_OVERVIEW_STAGING",
-        "key_columns": ["HashId"],
+        "target_table": "dbo.PCO_GROUPS_overview",
+        "staging_table": "dbo.PCO_GROUPS_overview_STAGING",
+        "key_columns": ["GroupID"],
         "required_source_keys": [
-            "hash_id"
+            "group_id"
         ],
         "column_map": {
-            "HashId": "hash_id",
             "GroupID": "group_id",
             "GroupName": "group_name",
+            "GroupTypeID": "group_type_id",
             "MemberCount": "member_count",
+            "PCOMembershipCount": "pco_memberships_count",
             "EventCount": "event_count",
-            "AvgEventAttendance": "avg_event_attendance_rate",
-            "OverallAttendance": "overall_attendance_rate",
             "TotalAttended": "total_attended",
             "TotalAttendanceRecords": "total_attendance_records",
+            "CreatedAt": "created_at",
             "ArchivedAt": "archived_at",
         },
     },
 
-    "group_snapshot": {
-        "target_table": f"dbo.PCO_GROUPS_{snapshot}_SNAPSHOT",
-        "staging_table": f"dbo.PCO_GROUPS_{snapshot}_SNAPSHOT_STAGING",
-        "key_columns": ["HashId"],
+    "group_types": {
+        "target_table": "dbo.PCO_GROUPS_types",
+        "staging_table": "dbo.PCO_GROUPS_types_STAGING",
+        "key_columns": ["GroupTypeID"],
+        "required_source_keys": [
+            "group_type_id"
+        ],
+        "column_map": {
+            "GroupTypeID": "group_type_id",
+            "GroupTypeName": "group_type_name",
+            "ChurchCenterVisible": "church_center_visible",
+            "GroupCount": "group_count",
+        },
+    },
+
+    "group_tags": {
+        "target_table": "dbo.PCO_GROUPS_group_tags",
+        "staging_table": "dbo.PCO_GROUPS_group_tags_STAGING",
+        "key_columns": ["HashID"],
         "required_source_keys": [
             "hash_id"
         ],
         "column_map": {
-            "HashId": "hash_id",
+            "HashID": "hash_id",
             "GroupID": "group_id",
-            "GroupName": "group_name",
+            "TagID": "tag_id",
+        },
+    },
+
+    "tags": {
+        "target_table": "dbo.PCO_GROUPS_tags",
+        "staging_table": "dbo.PCO_GROUPS_tags_STAGING",
+        "key_columns": ["TagID"],
+        "required_source_keys": [
+            "tag_id"
+        ],
+        "column_map": {
+            "TagID": "tag_id",
+            "TagGroupID": "tag_group_id",
+            "TagName": "name",
+        },
+    },
+
+    "tag_groups": {
+        "target_table": "dbo.PCO_GROUPS_tag_groups",
+        "staging_table": "dbo.PCO_GROUPS_tag_groups_STAGING",
+        "key_columns": ["TagGroupID"],
+        "required_source_keys": [
+            "tag_group_id"
+        ],
+        "column_map": {
+            "TagGroupID": "tag_group_id",
+            "TagGroupName": "name",
+            "DisplayPublicly": "display_publicly",
+            "MultipleOptionsEnabled": "multiple_options_enabled",
+        },
+    },
+
+    "events": {
+        "target_table": "dbo.PCO_GROUPS_Events",
+        "staging_table": "dbo.PCO_GROUPS_Events_Staging",
+        "key_columns": ["EventID"],
+        "required_source_keys": [
+            "event_id"
+        ],
+        "column_map": {
+            "EventID": "event_id",
+            "PCORepeatingEventID": "pco_repeating_event_id",
+            "GroupID": "group_id",
+            "EventName": "name",
+            "Repeating": "repeating",
+            "InstanceCount": "instance_count",
+            "LocationTypePreference": "location_type_preference",
+            "LocationID": "location_id"
+        },
+    },
+
+    "event_instances": {
+        "target_table": "dbo.PCO_GROUPS_Event_Instances",
+        "staging_table": "dbo.PCO_GROUPS_Event_Instances_Staging",
+        "key_columns": ["EventInstanceID"],
+        "required_source_keys": [
+            "event_instance_id"
+        ],
+        "column_map": {
+            "EventInstanceID": "event_instance_id",
+            "EventID": "event_id",
+            "EventName": "name",
+            "StartsAt": "starts_at",
+            "EndsAt": "ends_at",
+            "Canceled": "canceled",
+            "VisitorsCount": "visitors_count",
+            "Classification": "classification",
+            "LocationID": "location_id"
+        },
+    },
+
+    "event_attendances": {
+        "target_table": "dbo.PCO_GROUPS_Event_Attendances",
+        "staging_table": "dbo.PCO_GROUPS_Event_Attendances_Staging",
+        "key_columns": ["HashID"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashID": "hash_id",
+            "EventInstanceID": "event_instance_id",
+            "EventName": "name",
+            "PersonID": "person_id",
+            "CurrentGroupMember": "current_group_member",
+            "MembershipRole": "membership_role",
+            "AttendanceID": "attendance_id",
+            "AttendanceRole": "attendance_role",
+            "Attended": "attended",
+            "AttendanceRecordExists": "attendance_record_exists"
+        },
+    },
+
+    "group_members": {
+        "target_table": "dbo.PCO_GROUPS_Members",
+        "staging_table": "dbo.PCO_GROUPS_Members_Staging",
+        "key_columns": ["MembershipID"],
+        "required_source_keys": [
+            "membership_id"
+        ],
+        "column_map": {
             "MembershipID": "membership_id",
             "PersonID": "person_id",
-            "MemberName": "member_name",
-            "GroupRole": "role",
+            "GroupID": "group_id",
+            "Role": "role",
             "JoinedAt": "joined_at"
         },
     },
 
-    "group_attendance": {
-        "target_table": "dbo.PCO_GROUPS_placeholder",
-        "staging_table": "dbo.PCO_GROUPS_placeholder_STAGING",
+    "group_members_history": {
+        "target_table": "dbo.PCO_GROUPS_Members_History",
+        "staging_table": "dbo.PCO_GROUPS_Members_History_Staging",
+        "key_columns": ["MembershipID"],
+        "required_source_keys": [
+            "membership_id"
+        ],
+        "column_map": {
+            "MembershipID": "membership_id",
+            "PersonID": "person_id",
+            "GroupID": "group_id",
+            "Role": "role",
+            "JoinedAt": "joined_at",
+            "LeftAt": "left_at"
+        },
+    },
+
+    "headcounts": {
+        "target_table": "dbo.PCO_Check_Ins_Headcounts",
+        "staging_table": "dbo.PCO_Check_Ins_Headcounts_STAGING",
         "key_columns": ["HashId"],
         "required_source_keys": [
             "hash_id"
         ],
         "column_map": {
             "HashId": "hash_id",
-            "GroupID": "group_id",
             "EventID": "event_id",
             "EventName": "event_name",
-            "StartsAt": "starts_at",
+            "EventTimeID": "event_time_id",
+            "HeadCountID": "headcount_id",
+            "HeadCountTotal": "headcount_total",
+            "AttendanceTypeName": "attendance_type_name",
+            "AttendanceTypeID": "attendance_type_id",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "checkins_events": {
+        "target_table": "dbo.PCO_Check_Ins_Events",
+        "staging_table": "dbo.PCO_Check_Ins_Event_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "EventID": "event_id",
+            "EventName": "event_name",
+            "EventDate": "event_date",
+            "EventTime": "event_time",
+            "HeadCountID": "headcount_id",
+            "ArchivedAt": "archived_at",
+            "CheckInCount": "check_in_count",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "checkins_event_location": {
+        "target_table": "dbo.PCO_Check_Ins_Event_Locations",
+        "staging_table": "dbo.PCO_Check_Ins_Event_Locations_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "EventID": "event_id",
+            "EventName": "event_name",
+            "EventTimeID": "event_time_id",
+            "EventTime": "event_time",
+            "LocationEventTimeID": "location_event_time_id",
+            "LocationID": "location_id",
+            "LocationName": "location_name",
+            "AttendersCount": "attenders_count",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "checkins_checkins": {
+        "target_table": "dbo.PCO_Check_Ins_Check_Ins",
+        "staging_table": "dbo.PCO_Check_Ins_Check_Ins_STAGING",
+        "key_columns": ["HashId"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashId": "hash_id",
+            "CheckInID": "check_in_id",
+            "PersonName": "person_id",
             "PersonID": "person_id",
-            "PersonName": "member_name",
-            "MembershipRole": "membership_role",
-            "Attended": "attended",
-            "AttendanceRecordExists": "attendance_record_exists",
+            "EventID": "event_id",
+            "EventName": "event_name",
+            "CheckInTime": "check_time_in",
+            "CheckOutTime": "check_time_out",
+            "CheckInKind": "check_in_kind",
+            "EventPeriodID": "event_period_id",
+            "EventTimeID": "event_time_id",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
         },
     },
 
