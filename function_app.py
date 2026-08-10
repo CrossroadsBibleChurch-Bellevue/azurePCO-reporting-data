@@ -1,12 +1,12 @@
-import logging
 import azure.functions as func
 
-from dataverse.credentials_urls import client
 from orchestrators.calendar_orchestrator import main as extractor_calendar
 from orchestrators.people_orchestrator import main as deep_extractor_people
 from orchestrators.people_orchestrator_delta import main as updates_extractor_people
 from orchestrators.groups_orchestrator_full import main as groups_full_refresh
 from orchestrators.groups_orchestrator_delta import main as groups_delta
+from orchestrators.check_ins_orchestrator_delta import main as checkins_delta
+from orchestrators.check_ins_orchestrator_full import main as checkins_full
 
 """
 To make a version that only fetches the most recent, since the last fetch, order the API pulls by -updated_at, so that it displays the most recent changes, then step through page by page until the updated at
@@ -23,10 +23,12 @@ app = func.FunctionApp()
 def deep_data_extraction(myTimer: func.TimerRequest) -> None:
     #extractor_calendar(client)
     deep_extractor_people()
+    checkins_full()
 
-@app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=True,
+@app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def regular_data_extraction(myTimer: func.TimerRequest) -> None:
     updates_extractor_people()
     groups_delta()
+    checkins_delta()
 

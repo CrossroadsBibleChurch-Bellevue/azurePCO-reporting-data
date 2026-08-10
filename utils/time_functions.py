@@ -128,3 +128,17 @@ def convert_output_datetimes_to_local_sql(value: Any) -> Any:
 
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def format_api_datetime(value: datetime) -> str:
+    """
+    Format a timezone-aware datetime for PCO query parameters.
+
+    Example:
+        2026-08-01T19:51:51Z
+    """
+    return (
+        value.astimezone(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )

@@ -459,3 +459,197 @@ CREATE TABLE dbo.PCO_GROUPS_Members_History_Staging
     LeftAt        DATETIMEOFFSET(7)  NULL
 );
 GO
+
+CREATE TABLE dbo.PCO_Check_Ins_Events
+(
+    CheckInEventID BIGINT NOT NULL,
+    EventName      NVARCHAR(255) NULL,
+    Frequency      NVARCHAR(100) NULL,
+    ArchivedAt     DATETIMEOFFSET(7) NULL,
+    CreatedAt      DATETIMEOFFSET(7) NULL,
+    UpdatedAt      DATETIMEOFFSET(7) NULL,
+
+    CONSTRAINT PK_PCO_Check_Ins_Events
+        PRIMARY KEY CLUSTERED (CheckInEventID)
+);
+GO
+
+
+CREATE TABLE dbo.PCO_Check_Ins_Event_STAGING
+(
+    CheckInEventID BIGINT NOT NULL,
+    EventName      NVARCHAR(255) NULL,
+    Frequency      NVARCHAR(100) NULL,
+    ArchivedAt     DATETIMEOFFSET(7) NULL,
+    CreatedAt      DATETIMEOFFSET(7) NULL,
+    UpdatedAt      DATETIMEOFFSET(7) NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_Check_Ins_Event_Instances
+(
+    CheckInEventInstanceID BIGINT NOT NULL,
+    CheckInEventID         BIGINT NULL,
+    StartsAt               DATETIMEOFFSET(7) NULL,
+    EndsAt                 DATETIMEOFFSET(7) NULL,
+    RegularCount           INT NULL,
+    GuestCount             INT NULL,
+    VolunteerCount         INT NULL,
+    TotalCount             INT NULL,
+    Note                    NVARCHAR(MAX) NULL,
+    CreatedAt               DATETIMEOFFSET(7) NULL,
+    UpdatedAt               DATETIMEOFFSET(7) NULL,
+
+    CONSTRAINT PK_PCO_Check_Ins_Event_Instances
+        PRIMARY KEY CLUSTERED (CheckInEventInstanceID)
+);
+GO
+
+
+CREATE TABLE dbo.PCO_Check_Ins_Event_Instances_STAGING
+(
+    CheckInEventInstanceID BIGINT NOT NULL,
+    CheckInEventID         BIGINT NULL,
+    StartsAt               DATETIMEOFFSET(7) NULL,
+    EndsAt                 DATETIMEOFFSET(7) NULL,
+    RegularCount           INT NULL,
+    GuestCount             INT NULL,
+    VolunteerCount         INT NULL,
+    TotalCount             INT NULL,
+    Note                    NVARCHAR(MAX) NULL,
+    CreatedAt               DATETIMEOFFSET(7) NULL,
+    UpdatedAt               DATETIMEOFFSET(7) NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_Check_Ins_Attendance
+(
+    CheckInEventAttendanceID BIGINT NOT NULL,
+    CheckInID                BIGINT NULL,
+    CheckInTimeID            BIGINT NULL,
+    CheckInEventID           BIGINT NULL,
+    CheckInEventInstanceID   BIGINT NULL,
+    EventTimeID              BIGINT NULL,
+    PersonID                 BIGINT NULL,
+    AttendanceKind           NVARCHAR(100) NULL,
+    CheckInTime              DATETIMEOFFSET(7) NULL,
+    CheckOutTime             DATETIMEOFFSET(7) NULL,
+    LocationID               BIGINT NULL,
+
+    CONSTRAINT PK_PCO_Check_Ins_Attendance
+        PRIMARY KEY CLUSTERED (CheckInEventAttendanceID)
+);
+GO
+
+
+CREATE TABLE dbo.PCO_Check_Ins_Attendance_STAGING
+(
+    CheckInEventAttendanceID BIGINT NOT NULL,
+    CheckInID                BIGINT NULL,
+    CheckInTimeID            BIGINT NULL,
+    CheckInEventID           BIGINT NULL,
+    CheckInEventInstanceID   BIGINT NULL,
+    EventTimeID              BIGINT NULL,
+    PersonID                 BIGINT NULL,
+    AttendanceKind           NVARCHAR(100) NULL,
+    CheckInTime              DATETIMEOFFSET(7) NULL,
+    CheckOutTime             DATETIMEOFFSET(7) NULL,
+    LocationID               BIGINT NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_Check_Ins_Event_Times
+(
+    EventTimeID            BIGINT NOT NULL,
+    CheckInEventID         BIGINT NULL,
+    CheckInEventInstanceID BIGINT NULL,
+    [Name]                 NVARCHAR(255) NULL,
+    StartsAt               DATETIMEOFFSET(7) NULL,
+    ShowsAt                DATETIMEOFFSET(7) NULL,
+    HidesAt                DATETIMEOFFSET(7) NULL,
+    RegularCount           INT NULL,
+    GuestCount             INT NULL,
+    VolunteerCount         INT NULL,
+    TotalCount             INT NULL,
+
+    CONSTRAINT PK_PCO_Check_Ins_Event_Times
+        PRIMARY KEY CLUSTERED (EventTimeID)
+);
+GO
+
+
+CREATE TABLE dbo.PCO_Check_Ins_Event_Times_STAGING
+(
+    EventTimeID            BIGINT NOT NULL,
+    CheckInEventID         BIGINT NULL,
+    CheckInEventInstanceID BIGINT NULL,
+    [Name]                 NVARCHAR(255) NULL,
+    StartsAt               DATETIMEOFFSET(7) NULL,
+    ShowsAt                DATETIMEOFFSET(7) NULL,
+    HidesAt                DATETIMEOFFSET(7) NULL,
+    RegularCount           INT NULL,
+    GuestCount             INT NULL,
+    VolunteerCount         INT NULL,
+    TotalCount             INT NULL
+);
+GO
+
+CREATE TABLE dbo.PCO_Check_Ins_Headcounts
+(
+    HeadcountID           BIGINT NOT NULL,
+    CheckInEventID        BIGINT NULL,
+    CheckInEventInstanceID BIGINT NULL,
+    EventTimeID           BIGINT NULL,
+    AttendanceTypeID      BIGINT NULL,
+    AttendanceTypeName    NVARCHAR(255) NULL,
+    Total                 INT NULL,
+    CreatedAt             DATETIMEOFFSET(7) NULL,
+    UpdatedAt             DATETIMEOFFSET(7) NULL,
+
+    CONSTRAINT PK_PCO_Check_Ins_Headcounts
+        PRIMARY KEY CLUSTERED (HeadcountID)
+);
+GO
+
+
+CREATE TABLE dbo.PCO_Check_Ins_Headcounts_STAGING
+(
+    HeadcountID            BIGINT NOT NULL,
+    CheckInEventID         BIGINT NULL,
+    CheckInEventInstanceID BIGINT NULL,
+    EventTimeID            BIGINT NULL,
+    AttendanceTypeID       BIGINT NULL,
+    AttendanceTypeName     NVARCHAR(255) NULL,
+    Total                  INT NULL,
+    CreatedAt              DATETIMEOFFSET(7) NULL,
+    UpdatedAt              DATETIMEOFFSET(7) NULL
+);
+GO
+
+CREATE INDEX IX_PCO_CheckInInstances_EventID
+    ON dbo.PCO_Check_Ins_Event_Instances (CheckInEventID);
+GO
+
+CREATE INDEX IX_PCO_CheckInAttendance_EventInstanceID
+    ON dbo.PCO_Check_Ins_Attendance (CheckInEventInstanceID);
+GO
+
+CREATE INDEX IX_PCO_CheckInAttendance_PersonID
+    ON dbo.PCO_Check_Ins_Attendance (PersonID);
+GO
+
+CREATE INDEX IX_PCO_CheckInAttendance_EventTimeID
+    ON dbo.PCO_Check_Ins_Attendance (EventTimeID);
+GO
+
+CREATE INDEX IX_PCO_CheckInEventTimes_EventInstanceID
+    ON dbo.PCO_Check_Ins_Event_Times (CheckInEventInstanceID);
+GO
+
+CREATE INDEX IX_PCO_CheckInHeadcounts_EventInstanceID
+    ON dbo.PCO_Check_Ins_Headcounts (CheckInEventInstanceID);
+GO
+
+CREATE INDEX IX_PCO_CheckInHeadcounts_EventTimeID
+    ON dbo.PCO_Check_Ins_Headcounts (EventTimeID);
+GO

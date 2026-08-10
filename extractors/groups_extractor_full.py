@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from utils.env_fetcher import get_auth_from_env, max_event_pages
 from utils.time_functions import parse_pco_datetime, convert_output_datetimes_to_local_sql, now_utc
-from utils.group_fetchers import fetch_all_tags, fetch_events, fetch_group_tags, fetch_group_types, fetch_groups, fetch_memberships_for_group, fetch_tag_groups, fetch_attendance_for_events, PlanningCenterClient
+from extractors.fetchers.group_fetchers import fetch_all_tags, fetch_events, fetch_group_tags, fetch_group_types, fetch_groups, fetch_memberships_for_group, fetch_tag_groups, fetch_attendance_for_events, PlanningCenterClient
 from utils.group_builders import build_all_attendance_table_rows, build_event_instances_table_rows, build_events_table_rows, build_group_members_table_rows, build_group_memberships_table_rows, build_group_overview_table_rows, build_group_tags_table_rows, build_group_types_table_rows, build_output, build_tag_groups_table_rows, build_tags_table_rows
 from database.prepper import wake_up_server
 

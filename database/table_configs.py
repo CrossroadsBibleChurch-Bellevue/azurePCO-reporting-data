@@ -1,9 +1,6 @@
-from datetime import datetime
+import pyodbc
 
-month = datetime.now().strftime("%B")
-year = datetime.now().year
-snapshot = f"{month}_{year}"
-
+from database.converters import normalize_optional_datetime
 
 TABLE_CONFIGS = {
     "address": {
@@ -333,94 +330,134 @@ TABLE_CONFIGS = {
         },
     },
 
-    "headcounts": {
-        "target_table": "dbo.PCO_Check_Ins_Headcounts",
-        "staging_table": "dbo.PCO_Check_Ins_Headcounts_STAGING",
-        "key_columns": ["HashId"],
-        "required_source_keys": [
-            "hash_id"
-        ],
-        "column_map": {
-            "HashId": "hash_id",
-            "EventID": "event_id",
-            "EventName": "event_name",
-            "EventTimeID": "event_time_id",
-            "HeadCountID": "headcount_id",
-            "HeadCountTotal": "headcount_total",
-            "AttendanceTypeName": "attendance_type_name",
-            "AttendanceTypeID": "attendance_type_id",
-            "CreatedAt": "created_at",
-            "UpdatedAt": "updated_at",
-        },
-    },
+
 
     "checkins_events": {
         "target_table": "dbo.PCO_Check_Ins_Events",
         "staging_table": "dbo.PCO_Check_Ins_Event_STAGING",
-        "key_columns": ["HashId"],
+        "key_columns": ["CheckInEventID"],
         "required_source_keys": [
-            "hash_id"
+            "CheckInEventID"
         ],
         "column_map": {
-            "HashId": "hash_id",
-            "EventID": "event_id",
-            "EventName": "event_name",
-            "EventDate": "event_date",
-            "EventTime": "event_time",
-            "HeadCountID": "headcount_id",
-            "ArchivedAt": "archived_at",
-            "CheckInCount": "check_in_count",
-            "CreatedAt": "created_at",
-            "UpdatedAt": "updated_at",
+            "CheckInEventID": "CheckInEventID",
+            "EventName": "Name",
+            "Frequency": "Frequency",
+            "ArchivedAt": "ArchivedAt",
+            "CreatedAt": "CreatedAt",
+            "UpdatedAt": "UpdatedAt",
+        },
+
+        "input_sizes": [
+            (pyodbc.SQL_BIGINT, 0, 0),
+            (pyodbc.SQL_WVARCHAR, 255, 0),
+            (pyodbc.SQL_WVARCHAR, 100, 0),
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 7),
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 7),
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 7),
+        ],
+
+        "fast_executemany": True,
+    },
+
+    "checkins_event_instances": {
+        "target_table": "dbo.PCO_Check_Ins_Event_Instances",
+        "staging_table": "dbo.PCO_Check_Ins_Event_Instances_STAGING",
+        "key_columns": ["CheckInEventInstanceID"],
+        "required_source_keys": [
+            "CheckInEventInstanceID"
+        ],
+        "column_map": {
+            "CheckInEventInstanceID": "CheckInEventInstanceID",
+            "CheckInEventID": "CheckInEventID",
+            "StartsAt": "StartsAt",
+            "EndsAt": "EndsAt",
+            "RegularCount": "RegularCount",
+            "GuestCount": "GuestCount",
+            "VolunteerCount": "VolunteerCount",
+            "TotalCount": "TotalCount",
+            "Note": "Note",
+            "CreatedAt": "CreatedAt",
+            "UpdatedAt": "UpdatedAt",
+        },
+
+        "fast_executemany": False,
+    },
+
+    "checkins_attendance": {
+        "target_table": "dbo.PCO_Check_Ins_Attendance",
+        "staging_table": "dbo.PCO_Check_Ins_Attendance_STAGING",
+        "key_columns": ["CheckInEventAttendanceID"],
+        "required_source_keys": [
+            "CheckInEventAttendanceID"
+        ],
+        "column_map": {
+            "CheckInEventAttendanceID": "CheckInEventAttendanceID",
+            "CheckInID": "CheckInID",
+            "CheckInTimeID": "CheckInTimeID",
+            "CheckInEventID": "CheckInEventID",
+            "CheckInEventInstanceID": "CheckInEventInstanceID",
+            "EventTimeID": "EventTimeID",
+            "PersonID": "PersonID",
+            "AttendanceKind": "AttendanceKind",
+            "CheckInTime": "CheckInTime",
+            "CheckOutTime": "CheckOutTime",
+            "LocationID": "LocationID",
+        },
+
+        "converters": {
+            "CheckInTime": normalize_optional_datetime,
+            "CheckOutTime": normalize_optional_datetime,
         },
     },
 
-    "checkins_event_location": {
-        "target_table": "dbo.PCO_Check_Ins_Event_Locations",
-        "staging_table": "dbo.PCO_Check_Ins_Event_Locations_STAGING",
-        "key_columns": ["HashId"],
+    "checkins_eventtimes": {
+        "target_table": "dbo.PCO_Check_Ins_Event_Times",
+        "staging_table": "dbo.PCO_Check_Ins_Event_Times_STAGING",
+        "key_columns": ["EventTimeID"],
         "required_source_keys": [
-            "hash_id"
+            "EventTimeID"
         ],
         "column_map": {
-            "HashId": "hash_id",
-            "EventID": "event_id",
-            "EventName": "event_name",
-            "EventTimeID": "event_time_id",
-            "EventTime": "event_time",
-            "LocationEventTimeID": "location_event_time_id",
-            "LocationID": "location_id",
-            "LocationName": "location_name",
-            "AttendersCount": "attenders_count",
-            "CreatedAt": "created_at",
-            "UpdatedAt": "updated_at",
+            "EventTimeID": "EventTimeID",
+            "CheckInEventID": "CheckInEventID",
+            "CheckInEventInstanceID": "CheckInEventInstanceID",
+            "Name": "Name",
+            "StartsAt": "StartsAt",
+            "ShowsAt": "ShowsAt",
+            "HidesAt": "HidesAt",
+            "RegularCount": "RegularCount",
+            "GuestCount": "GuestCount",
+            "VolunteerCount": "VolunteerCount",
+            "TotalCount": "TotalCount",
+        },
+
+        "converters": {
+            "StartsAt": normalize_optional_datetime,
+            "ShowsAt": normalize_optional_datetime,
+            "HidesAt": normalize_optional_datetime,
         },
     },
 
-    "checkins_checkins": {
-        "target_table": "dbo.PCO_Check_Ins_Check_Ins",
-        "staging_table": "dbo.PCO_Check_Ins_Check_Ins_STAGING",
-        "key_columns": ["HashId"],
+    "headcounts": {
+        "target_table": "dbo.PCO_Check_Ins_Headcounts",
+        "staging_table": "dbo.PCO_Check_Ins_Headcounts_STAGING",
+        "key_columns": ["HeadcountID"],
         "required_source_keys": [
-            "hash_id"
+            "HeadcountID"
         ],
         "column_map": {
-            "HashId": "hash_id",
-            "CheckInID": "check_in_id",
-            "PersonName": "person_id",
-            "PersonID": "person_id",
-            "EventID": "event_id",
-            "EventName": "event_name",
-            "CheckInTime": "check_time_in",
-            "CheckOutTime": "check_time_out",
-            "CheckInKind": "check_in_kind",
-            "EventPeriodID": "event_period_id",
-            "EventTimeID": "event_time_id",
-            "CreatedAt": "created_at",
-            "UpdatedAt": "updated_at",
+            "HeadcountID": "HeadcountID",
+            "CheckInEventID": "CheckInEventID",
+            "CheckInEventInstanceID": "CheckInEventInstanceID",
+            "EventTimeID": "EventTimeID",
+            "AttendanceTypeID": "AttendanceTypeID",
+            "AttendanceTypeName": "AttendanceTypeName",
+            "Total": "Total",
+            "CreatedAt": "CreatedAt",
+            "UpdatedAt": "UpdatedAt",
         },
     },
-
 
     # Example pattern for another table:
     #
