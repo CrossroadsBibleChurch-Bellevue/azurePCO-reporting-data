@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from extractors.schemas.people_schemas import build_row_people
 import re
+import sys
 
 def sanitize_schema_name(name: str) -> str:
     n = re.sub(r"[^A-Za-z0-9_]", "_", name)
@@ -22,7 +23,7 @@ def upsert_row(table: Dict[str, Dict[str, Any]], row: Dict[str, Any], pk: str = 
         return
     existing = table[rid]
     for k, v in row.items():
-        if k == "cr0b4_unique_id" or k not in existing or existing[k] is None:
+        if k == "unique_id" or k not in existing or existing[k] is None:
             existing[k] = v
 
 def build_tables(parsed: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]) -> Dict[str, Any]:
@@ -51,55 +52,58 @@ def build_tables(parsed: Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]) -> Dic
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                 elif table == "core_attributes":
+                    #print(dict_level4.get("school"))
+                    #print(dict_level4)
+                    #sys.exit(0)
                     upsert_row(core_attributes, build_row_people(
                         "core_attribute",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_person_id")
+                    ), pk="person_id")
                 elif table == "custom_fields":
                     upsert_row(custom_fields, build_row_people(
                         "custom_fields",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                     upsert_row(custom_values, build_row_people(
                         "custom_values",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                 elif table == "custom_tabs":
                     upsert_row(custom_tabs, build_row_people(
                         "custom_tabs",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                 elif table == "emails":
                     upsert_row(emails, build_row_people(
                         "emails",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                 elif table == "household":
                     upsert_row(household, build_row_people(
                         "household",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
                 elif table == "phones":
                     upsert_row(phones, build_row_people(
                         "phones",
                         {"person_id": person_id,
                         "chunk": dict_level4,
                         }
-                    ), pk="cr0b4_hash_id")
+                    ), pk="hash_id")
 
 
 

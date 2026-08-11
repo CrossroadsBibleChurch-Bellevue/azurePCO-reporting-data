@@ -4,6 +4,13 @@ from typing import Any, Tuple, Optional, Dict, List
 # This file contains various functions that are used to parse through the API JSON response. They are in this file so that this Azure Function is more modular and other API fetchers can in theory
 # be implemented more easily. Also it makes the code more readable in general and not as long lol
 
+def rel_id(resource: Dict[str, Any], relationship_name: str) -> Optional[str]:
+    rel = resource.get("relationships", {}).get(relationship_name, {})
+    data = rel.get("data")
+    if isinstance(data, dict):
+        return data.get("id")
+    return None
+
 def clean_text(s: Optional[str], max_len: int = 400) -> Optional[str]:
     if s is None:
         return None

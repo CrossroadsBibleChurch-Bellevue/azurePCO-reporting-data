@@ -23,21 +23,21 @@ TABLE_MAP = {
 }
 
 KEY_PLAN = {
-    "owners": ["cr0b4_unique_id"],
-    "events": ["cr0b4_unique_id"],
-    "event_instances": ["cr0b4_unique_id"],
-    "event_times": ["cr0b4_unique_id"],
-    "tags": ["cr0b4_unique_id"],
-    "tag_groups": ["cr0b4_unique_id"],
-    "tag_groups_tag_maps": ["cr0b4_unique_id"],
-    "event_instance_tag_map": ["cr0b4_alt_key"],
-    "room_setups": ["cr0b4_unique_id"],
-    "rooms": ["cr0b4_unique_id"],
-    "resources": ["cr0b4_unique_id"],
-    "event_resource_requests": ["cr0b4_unique_id"],
-    "event_resource_answers": ["cr0b4_unique_id"],
-    "resource_bookings": ["cr0b4_unique_id"],
-    "schedule": ["cr0b4_id"],
+    "owners": ["unique_id"],
+    "events": ["unique_id"],
+    "event_instances": ["unique_id"],
+    "event_times": ["unique_id"],
+    "tags": ["unique_id"],
+    "tag_groups": ["unique_id"],
+    "tag_groups_tag_maps": ["unique_id"],
+    "event_instance_tag_map": ["alt_key"],
+    "room_setups": ["unique_id"],
+    "rooms": ["unique_id"],
+    "resources": ["unique_id"],
+    "event_resource_requests": ["unique_id"],
+    "event_resource_answers": ["unique_id"],
+    "resource_bookings": ["unique_id"],
+    "schedule": ["id"],
 }
 
 def main(client):

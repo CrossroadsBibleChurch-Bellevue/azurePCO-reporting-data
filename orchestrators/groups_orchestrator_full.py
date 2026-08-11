@@ -1,7 +1,7 @@
 import time
 from extractors.groups_extractor_full import extraction
 from database.loader import uploader
-from database.prepper import table_prep, wake_up_server
+from database.prepper import wake_up_server
 
 def main():
     t0 = time.perf_counter()
@@ -14,11 +14,7 @@ def main():
 
     wake_up_server()
 
-    table_prep(tables)
-
-    wake_up_server()
-
-    uploader(tables)
+    uploader(tables, "groups")
 
     t2 = time.perf_counter()
     print(f"Extract seconds: {t1 - t0:.2f}")

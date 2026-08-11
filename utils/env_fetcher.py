@@ -1,5 +1,6 @@
 import os
 from typing import Tuple
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,13 +19,16 @@ past_limit_raw = os.getenv("PAST_LIMIT")
 past_limit = int(past_limit_raw) if past_limit_raw not in (None, "") else None
 future_limit_raw = os.getenv("FUTURE_LIMIT")
 future_limit = int(future_limit_raw) if future_limit_raw not in (None, "") else None
-max_workers = os.getenv("GROUP_MAX_WORKERS")
-include_archived = os.getenv("GROUPS_INCLUDE_ARCHIVED")
 max_event_page_raw = os.getenv("GROUPS_MAX_EVENT_PAGES")
 max_event_pages = int(max_event_page_raw) if max_event_page_raw not in (None, "") else None
 mode = os.getenv("GROUPS_MODE")
-skip_memberships = os.getenv("GROUPS_SKIP_MEMBERSHIPS")
-skip_attendance = os.getenv("GROUPS_SKIP_ATTENDANCE")
+
+def timezone_env() -> Tuple[str, str]:
+    LOCAL_TIMEZONE_NAME = os.getenv("LOCAL_TIMEZONE")
+    LOCAL_TIMEZONE = ZoneInfo(LOCAL_TIMEZONE_NAME)
+    SQL_DATETIME_FORMAT = os.getenv("SQL_DATETIME_FORMAT")
+
+    return LOCAL_TIMEZONE, SQL_DATETIME_FORMAT
 
 # Get authentication from environmental variables for PCO
 def get_auth_from_env() -> Tuple[str, str]:

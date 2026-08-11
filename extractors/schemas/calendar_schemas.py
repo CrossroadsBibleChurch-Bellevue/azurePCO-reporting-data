@@ -14,7 +14,7 @@ RowSchema = Dict[str, FieldGetter]
 
 SCHEMAS: Dict[str, RowSchema] = {
     "tag_groups": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("tag_group", c["tg_id"]),
+        "unique_id": lambda c: stable_hash_id("tag_group", c["tg_id"]),
         "cr548_id": lambda c: c["tg_id"],
         "cr548_name1": lambda c: c["tg_attr"].get("name"),
         "cr548_required": lambda c: c["tg_attr"].get("required"),
@@ -23,7 +23,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "tags": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("tag", c["tag_id"]),
+        "unique_id": lambda c: stable_hash_id("tag", c["tag_id"]),
         "cr548_id": lambda c: c["tag_id"],
         "cr548_name": lambda c: c["t_attr"].get("name"),
         "cr548_color": lambda c: c["t_attr"].get("color"),
@@ -34,20 +34,20 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "tag_groups_tag_maps": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("tag_groups_tag_maps", c["tag_id"], c["tg_id"]),
+        "unique_id": lambda c: stable_hash_id("tag_groups_tag_maps", c["tag_id"], c["tg_id"]),
         "cr548_tagid": lambda c: c["tag_id"],
         "cr548_tag_groupid": lambda c: c["tg_id"],
     },
 
     "owners": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("owner", c["owner_id"]),
+        "unique_id": lambda c: stable_hash_id("owner", c["owner_id"]),
         "cr548_id": lambda c: c["owner_id"],
         "cr548_first_name": lambda c: c["owner_attr"].get("first_name"),
         "cr548_last_name": lambda c: c["owner_attr"].get("last_name"),
     },
 
     "events": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("event", c["ev_id"]),
+        "unique_id": lambda c: stable_hash_id("event", c["ev_id"]),
         "cr548_id": lambda c: c["ev_id"],
         "cr548_name": lambda c: c["ev_attr"].get("name"),
         "cr548_summary": lambda c: clean_text(c["ev_attr"].get("summary")),
@@ -65,7 +65,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "event_instances": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("event_instance", c["inst_id"]),
+        "unique_id": lambda c: stable_hash_id("event_instance", c["inst_id"]),
         "cr548_id": lambda c: c["inst_id"],
         "cr548_eventid": lambda c: c["ev_id"],
         "cr548_location": lambda c: c["attr"].get("location"),
@@ -84,7 +84,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "resources": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("resource", c["resource_id"]),
+        "unique_id": lambda c: stable_hash_id("resource", c["resource_id"]),
         "cr548_id": lambda c: c["resource_id"],
         "cr548_name1": lambda c: c["res_attr"].get("name"),
         "cr548_path_name": lambda c: c["res_attr"].get("path_name"),
@@ -100,7 +100,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "rooms": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("room", c["room_id"]),
+        "unique_id": lambda c: stable_hash_id("room", c["room_id"]),
         "cr548_id": lambda c: c["room_id"],
         "cr548_name1": lambda c: c["r_attr"].get("name"),
         "cr548_path_name": lambda c: c["r_attr"].get("path_name"),
@@ -116,7 +116,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "event_times": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("event_time", c["et_id"]),
+        "unique_id": lambda c: stable_hash_id("event_time", c["et_id"]),
         "cr548_id": lambda c: c["et_id"],
         "cr548_eventid": lambda c: c["ev_id"],
         "cr548_name": lambda c: c["et_attr"].get("name"),
@@ -127,13 +127,13 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "event_instance_tag_map": {
-        "cr0b4_alt_key": lambda c: stable_hash_id("event_instance_tag_map", c["inst_id"], c["tag_id"]),
+        "alt_key": lambda c: stable_hash_id("event_instance_tag_map", c["inst_id"], c["tag_id"]),
         "cr548_event_instanceid": lambda c: c["inst_id"],
         "cr548_tagid": lambda c: c["tag_id"],
     },
 
     "resource_bookings": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("resource_booking", c["rb_id"]),
+        "unique_id": lambda c: stable_hash_id("resource_booking", c["rb_id"]),
         "cr548_id": lambda c: c["rb_id"],
         "cr548_eventid": lambda c: c["ev_id"],
         "cr548_event_instanceid": lambda c: c["inst_id"],
@@ -147,7 +147,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "room_setups": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("room_setup", c["rs_id"]),
+        "unique_id": lambda c: stable_hash_id("room_setup", c["rs_id"]),
         "cr548_id": lambda c: c["rs_id"],
         "cr548_name": lambda c: c["rs_attr"].get("name"),
         "cr548_description": lambda c: clean_text(c["rs_attr"].get("description")),
@@ -157,7 +157,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "event_resource_requests": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("event_resource_request", c["req_id"]),
+        "unique_id": lambda c: stable_hash_id("event_resource_request", c["req_id"]),
         "cr548_id": lambda c: c["req_id"],
         "cr548_eventid": lambda c: c["req_event_id"],
         "cr548_resourceid": lambda c: c["req_resource_id"],
@@ -174,7 +174,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "event_resource_answers": {
-        "cr0b4_unique_id": lambda c: stable_hash_id("event_resource_answers", c["ans_id"]),
+        "unique_id": lambda c: stable_hash_id("event_resource_answers", c["ans_id"]),
         "cr548_id": lambda c: c["ans_id"],
         "cr548_event_resource_requestid": lambda c: c["req_id"],
         "cr548_resource_question_id": lambda c: c["q_id"],
@@ -185,7 +185,7 @@ SCHEMAS: Dict[str, RowSchema] = {
     },
 
     "schedule": {
-        "cr0b4_id": lambda c: stable_hash_id("schedule", c["rb_id"], c["req_id"], c["inst_id"], c["ans"], c["ques"]),
+        "id": lambda c: stable_hash_id("schedule", c["rb_id"], c["req_id"], c["inst_id"], c["ans"], c["ques"]),
         "cr548_assignee": lambda c: None,
         "cr548_completion_status": lambda c: None,
         "cr548_event_instanceid": lambda c: c["inst_id"],

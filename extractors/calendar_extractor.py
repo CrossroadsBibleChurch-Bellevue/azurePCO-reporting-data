@@ -88,7 +88,7 @@ def build_relational_tables(
             upsert_row(tag_groups_tag_maps, build_row_calendar("tag_groups_tag_maps", {
                 "tag_id": tag_id,
                 "tg_id": tg_id,
-            }), pk="cr0b4_unique_id")
+            }), pk="unique_id")
 
     # Parse through resource data and if it is not a room, then add it to the resource table
     for resource_id, blob in (resource_q_cache or {}).items():
@@ -204,7 +204,7 @@ def build_relational_tables(
             upsert_row(event_instance_tag_map, build_row_calendar("event_instance_tag_map", {
                 "inst_id": inst_id,
                 "tag_id": tag_id,
-            }), pk="cr0b4_alt_key")
+            }), pk="alt_key")
 
         # ResourceBookings
         rb_refs = safe_get(rel, "resource_bookings", "data", default=[]) or []
