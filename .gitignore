@@ -133,3 +133,6 @@ __blobstorage__
 __queuestorage__
 __azurite_db*__.json
 .python_packages
+
+# Cache file
+pco_checkins_test_fetch_cache.json

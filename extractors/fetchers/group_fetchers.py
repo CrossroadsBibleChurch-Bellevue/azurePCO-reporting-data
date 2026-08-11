@@ -121,10 +121,23 @@ def fetch_group_types(
 
     return group_types
 
-def fetch_groups(client: PlanningCenterClient, include_archived: bool) -> List[Dict[str, Any]]:
+def fetch_groups(
+    client: PlanningCenterClient,
+    include_archived: bool,
+) -> List[Dict[str, Any]]:
     groups = []
 
-    for payload in client.paginate("groups", {"order": "name"}):
+    params: Dict[str, Any] = {
+        "order": "name",
+    }
+
+    if include_archived:
+        params["where[archive_status]"] = "include"
+
+    for payload in client.paginate(
+        "groups",
+        params,
+    ):
         for group in payload.get("data", []):
             compact = compact_group(group)
 

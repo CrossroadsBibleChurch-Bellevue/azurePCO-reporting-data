@@ -5,162 +5,162 @@ from database.converters import normalize_optional_datetime
 TABLE_CONFIGS = {
     "address": {
         "target_table": "dbo.PCO_People_Address",
-        "staging_table": "dbo.PCO_People_Address_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_Address",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "PlanningCenterId": "cr0b4_person_id",
-            "City": "cr0b4_city",
-            "CountryCode": "cr0b4_country_code",
-            "CountryName": "cr0b4_country_name",
-            "Location": "cr0b4_location",
-            "PrimaryLocation": "cr0b4_primary",
-            "State": "cr0b4_state",
-            "StreetLine1": "cr0b4_street_line_1",
-            "StreetLine2": "cr0b4_street_line_2",
-            "Zip": "cr0b4_zip"
+            "HashId": "hash_id",
+            "PersonID": "person_id",
+            "City": "city",
+            "CountryCode": "country_code",
+            "CountryName": "country_name",
+            "Location": "location",
+            "PrimaryLocation": "primary",
+            "State": "state",
+            "StreetLine1": "street_line_1",
+            "StreetLine2": "street_line_2",
+            "Zip": "zip"
         },
     },
 
     
     "core_attribute": {
         "target_table": "dbo.PCO_People_Core",
-        "staging_table": "dbo.PCO_People_Core_Staging",
-        "key_columns": ["PlanningCenterId"],
+        "staging_table": "dbo.STAGING_PCO_People_Core",
+        "key_columns": ["PersonID"],
         "required_source_keys": [
-            "cr0b4_person_id"
+            "person_id"
         ],
         "column_map": {
-            "PlanningCenterId": "cr0b4_person_id",
-            "BirthDate": "cr0b4_birthdate",
-            "Child": "cr0b4_child",
-            "CreatedAt": "cr0b4_created_at",
-            "CurrentStatus": "cr0b4_status",
-            "FirstName": "cr0b4_first_name",
-            "FullName": "cr0b4_name",
-            "Gender": "cr0b4_gender",
-            "GivenName": "cr0b4_given_name",
-            "Grade": "cr0b4_grade",
-            "GraduationYear": "cr0b4_graduation_year",
-            "InactivatedAt": "cr0b4_inactivated_at",
-            "InactiveReason": "cr0b4_inactive_reason",
-            "LastName": "cr0b4_last_name",
-            "MaritalStatus": "cr0b4_marital_status",
-            "MedicalNotes": "cr0b4_medical_notes",
-            "Membership": "cr0b4_membership",
-            "MiddleName": "cr0b4_middle_name",
-            "NickName": "cr0b4_nickname",
-            "PassedBackgroundCheck": "cr0b4_passed_background_check",
-            "UpdatedAt": "cr0b4_updated_at",
+            "PersonID": "person_id",
+            "BirthDate": "birthdate",
+            "Child": "child",
+            "CreatedAt": "created_at",
+            "CurrentStatus": "status",
+            "FirstName": "first_name",
+            "FullName": "name",
+            "Gender": "gender",
+            "GivenName": "given_name",
+            "Grade": "grade",
+            "GraduationYear": "graduation_year",
+            "InactivatedAt": "inactivated_at",
+            "InactiveReason": "inactive_reason",
+            "LastName": "last_name",
+            "MaritalStatus": "marital_status",
+            "MedicalNotes": "medical_notes",
+            "Membership": "membership",
+            "MiddleName": "middle_name",
+            "NickName": "nickname",
+            "PassedBackgroundCheck": "passed_background_check",
+            "UpdatedAt": "updated_at",
         },
     },
 
 
     "custom_fields": {
         "target_table": "dbo.PCO_People_CustomFields",
-        "staging_table": "dbo.PCO_People_CustomFields_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_CustomFields",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "FieldDataType": "cr0b4_field_data_type",
-            "FieldId": "cr0b4_field_id",
-            "FieldName": "cr0b4_field_name",
-            "FieldTabId": "cr0b4_field_tab_id",
-            "FieldTabName": "cr0b4_field_tab_name",
+            "HashId": "hash_id",
+            "FieldDataType": "field_data_type",
+            "FieldId": "field_id",
+            "FieldName": "field_name",
+            "FieldTabId": "field_tab_id",
+            "FieldTabName": "field_tab_name",
         },
     },
 
     "custom_tabs": {
         "target_table": "dbo.PCO_People_CustomTabs",
-        "staging_table": "dbo.PCO_People_CustomTabs_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_CustomTabs",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "TabId": "cr0b4_tab_id",
-            "TabName": "cr0b4_tab_name",
+            "HashId": "hash_id",
+            "TabId": "tab_id",
+            "TabName": "tab_name",
         },
     },
 
     "custom_values": {
         "target_table": "dbo.PCO_People_CustomValue",
-        "staging_table": "dbo.PCO_People_CustomValue_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_CustomValue",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "PlanningCenterId": "cr0b4_person_id",
-            "CustomFieldHash": "cr0b4_custom_field_hash",
-            "CustomValue": "cr0b4_value",
+            "HashId": "hash_id",
+            "PersonID": "person_id",
+            "CustomFieldHash": "custom_field_hash",
+            "CustomValue": "value",
             
         },
     },
 
     "emails": {
         "target_table": "dbo.PCO_People_Email",
-        "staging_table": "dbo.PCO_People_Email_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_Email",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "PlanningCenterId": "cr0b4_people_id",
-            "EmailAddress": "cr0b4_address",
-            "Location": "cr0b4_location",
-            "PrimaryLocation": "cr0b4_primary",
+            "HashId": "hash_id",
+            "PersonID": "people_id",
+            "EmailAddress": "address",
+            "Location": "location",
+            "PrimaryLocation": "primary",
         },
     },
 
     "household": {
         "target_table": "dbo.PCO_People_Household",
-        "staging_table": "dbo.PCO_People_Household_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_Household",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "PlanningCenterId": "cr0b4_person_id",
-            "HouseholdId": "cr0b4_household_id",
-            "HouseholdName": "cr0b4_name",
-            "MemberCount": "cr0b4_member_count",
-            "PrimaryContactId": "cr0b4_primary_contact_id",
-            "PrimaryContactName": "cr0b4_primary_contact_name",
+            "HashId": "hash_id",
+            "PersonID": "person_id",
+            "HouseholdId": "household_id",
+            "HouseholdName": "name",
+            "MemberCount": "member_count",
+            "PrimaryContactId": "primary_contact_id",
+            "PrimaryContactName": "primary_contact_name",
         },
     },
 
     "phones": {
         "target_table": "dbo.PCO_People_Phone",
-        "staging_table": "dbo.PCO_People_Phone_Staging",
+        "staging_table": "dbo.STAGING_PCO_People_Phone",
         "key_columns": ["HashId"],
         "required_source_keys": [
-            "cr0b4_hash_id"
+            "hash_id"
         ],
         "column_map": {
-            "HashId": "cr0b4_hash_id",
-            "PlanningCenterId": "cr0b4_people_id",
-            "CountryCode": "cr0b4_country_code",
-            "PhoneNumber": "cr0b4_number",
-            "Location": "cr0b4_location",
-            "PrimaryLocation": "cr0b4_primary",
+            "HashId": "hash_id",
+            "PersonID": "people_id",
+            "CountryCode": "country_code",
+            "PhoneNumber": "number",
+            "Location": "location",
+            "PrimaryLocation": "primary",
         },
     },
     
 
     "group_overview": {
-        "target_table": "dbo.PCO_GROUPS_overview",
-        "staging_table": "dbo.PCO_GROUPS_overview_STAGING",
+        "target_table": "dbo.PCO_Groups_overview",
+        "staging_table": "dbo.STAGING_PCO_Groups_overview",
         "key_columns": ["GroupID"],
         "required_source_keys": [
             "group_id"
@@ -180,8 +180,8 @@ TABLE_CONFIGS = {
     },
 
     "group_types": {
-        "target_table": "dbo.PCO_GROUPS_types",
-        "staging_table": "dbo.PCO_GROUPS_types_STAGING",
+        "target_table": "dbo.PCO_Groups_types",
+        "staging_table": "dbo.STAGING_PCO_Groups_types",
         "key_columns": ["GroupTypeID"],
         "required_source_keys": [
             "group_type_id"
@@ -195,8 +195,8 @@ TABLE_CONFIGS = {
     },
 
     "group_tags": {
-        "target_table": "dbo.PCO_GROUPS_group_tags",
-        "staging_table": "dbo.PCO_GROUPS_group_tags_STAGING",
+        "target_table": "dbo.PCO_Groups_group_tags",
+        "staging_table": "dbo.STAGING_PCO_Groups_group_tags",
         "key_columns": ["HashID"],
         "required_source_keys": [
             "hash_id"
@@ -209,8 +209,8 @@ TABLE_CONFIGS = {
     },
 
     "tags": {
-        "target_table": "dbo.PCO_GROUPS_tags",
-        "staging_table": "dbo.PCO_GROUPS_tags_STAGING",
+        "target_table": "dbo.PCO_Groups_tags",
+        "staging_table": "dbo.STAGING_PCO_Groups_tags",
         "key_columns": ["TagID"],
         "required_source_keys": [
             "tag_id"
@@ -223,8 +223,8 @@ TABLE_CONFIGS = {
     },
 
     "tag_groups": {
-        "target_table": "dbo.PCO_GROUPS_tag_groups",
-        "staging_table": "dbo.PCO_GROUPS_tag_groups_STAGING",
+        "target_table": "dbo.PCO_Groups_tag_groups",
+        "staging_table": "dbo.STAGING_PCO_Groups_tag_groups",
         "key_columns": ["TagGroupID"],
         "required_source_keys": [
             "tag_group_id"
@@ -238,8 +238,8 @@ TABLE_CONFIGS = {
     },
 
     "events": {
-        "target_table": "dbo.PCO_GROUPS_Events",
-        "staging_table": "dbo.PCO_GROUPS_Events_Staging",
+        "target_table": "dbo.PCO_Groups_Events",
+        "staging_table": "dbo.STAGING_PCO_Groups_Events",
         "key_columns": ["EventID"],
         "required_source_keys": [
             "event_id"
@@ -257,8 +257,8 @@ TABLE_CONFIGS = {
     },
 
     "event_instances": {
-        "target_table": "dbo.PCO_GROUPS_Event_Instances",
-        "staging_table": "dbo.PCO_GROUPS_Event_Instances_Staging",
+        "target_table": "dbo.PCO_Groups_Event_Instances",
+        "staging_table": "dbo.STAGING_PCO_Groups_Event_Instances",
         "key_columns": ["EventInstanceID"],
         "required_source_keys": [
             "event_instance_id"
@@ -277,8 +277,8 @@ TABLE_CONFIGS = {
     },
 
     "event_attendances": {
-        "target_table": "dbo.PCO_GROUPS_Event_Attendances",
-        "staging_table": "dbo.PCO_GROUPS_Event_Attendances_Staging",
+        "target_table": "dbo.PCO_Groups_Event_Attendances",
+        "staging_table": "dbo.STAGING_PCO_Groups_Event_Attendances",
         "key_columns": ["HashID"],
         "required_source_keys": [
             "hash_id"
@@ -286,7 +286,6 @@ TABLE_CONFIGS = {
         "column_map": {
             "HashID": "hash_id",
             "EventInstanceID": "event_instance_id",
-            "EventName": "name",
             "PersonID": "person_id",
             "CurrentGroupMember": "current_group_member",
             "MembershipRole": "membership_role",
@@ -298,8 +297,8 @@ TABLE_CONFIGS = {
     },
 
     "group_members": {
-        "target_table": "dbo.PCO_GROUPS_Members",
-        "staging_table": "dbo.PCO_GROUPS_Members_Staging",
+        "target_table": "dbo.PCO_Groups_Members",
+        "staging_table": "dbo.STAGING_PCO_Groups_Members",
         "key_columns": ["MembershipID"],
         "required_source_keys": [
             "membership_id"
@@ -314,8 +313,8 @@ TABLE_CONFIGS = {
     },
 
     "group_members_history": {
-        "target_table": "dbo.PCO_GROUPS_Members_History",
-        "staging_table": "dbo.PCO_GROUPS_Members_History_Staging",
+        "target_table": "dbo.PCO_Groups_Members_History",
+        "staging_table": "dbo.STAGING_PCO_Groups_Members_History",
         "key_columns": ["MembershipID"],
         "required_source_keys": [
             "membership_id"
@@ -334,7 +333,7 @@ TABLE_CONFIGS = {
 
     "checkins_events": {
         "target_table": "dbo.PCO_Check_Ins_Events",
-        "staging_table": "dbo.PCO_Check_Ins_Event_STAGING",
+        "staging_table": "dbo.STAGING_PCO_Check_Ins_Events",
         "key_columns": ["CheckInEventID"],
         "required_source_keys": [
             "CheckInEventID"
@@ -362,7 +361,7 @@ TABLE_CONFIGS = {
 
     "checkins_event_instances": {
         "target_table": "dbo.PCO_Check_Ins_Event_Instances",
-        "staging_table": "dbo.PCO_Check_Ins_Event_Instances_STAGING",
+        "staging_table": "dbo.STAGING_PCO_Check_Ins_Event_Instances",
         "key_columns": ["CheckInEventInstanceID"],
         "required_source_keys": [
             "CheckInEventInstanceID"
@@ -386,7 +385,7 @@ TABLE_CONFIGS = {
 
     "checkins_attendance": {
         "target_table": "dbo.PCO_Check_Ins_Attendance",
-        "staging_table": "dbo.PCO_Check_Ins_Attendance_STAGING",
+        "staging_table": "dbo.STAGING_PCO_Check_Ins_Attendance",
         "key_columns": ["CheckInEventAttendanceID"],
         "required_source_keys": [
             "CheckInEventAttendanceID"
@@ -413,7 +412,7 @@ TABLE_CONFIGS = {
 
     "checkins_eventtimes": {
         "target_table": "dbo.PCO_Check_Ins_Event_Times",
-        "staging_table": "dbo.PCO_Check_Ins_Event_Times_STAGING",
+        "staging_table": "dbo.STAGING_PCO_Check_Ins_Event_Times",
         "key_columns": ["EventTimeID"],
         "required_source_keys": [
             "EventTimeID"
@@ -441,7 +440,7 @@ TABLE_CONFIGS = {
 
     "headcounts": {
         "target_table": "dbo.PCO_Check_Ins_Headcounts",
-        "staging_table": "dbo.PCO_Check_Ins_Headcounts_STAGING",
+        "staging_table": "dbo.STAGING_PCO_Check_Ins_Headcounts",
         "key_columns": ["HeadcountID"],
         "required_source_keys": [
             "HeadcountID"
@@ -464,15 +463,15 @@ TABLE_CONFIGS = {
     # "groups": {
     #     "target_table": "dbo.PCO_Groups",
     #     "staging_table": "dbo.PCO_Groups_Staging",
-    #     "key_columns": ["PlanningCenterId"],
+    #     "key_columns": ["PersonID"],
     #     "required_source_keys": [
-    #         "cr0b4_group_id"
+    #         "group_id"
     #     ],
     #     "column_map": {
-    #         "PlanningCenterId": "cr0b4_group_id",
-    #         "Name": "cr0b4_name",
-    #         "CreatedAt": "cr0b4_created_at",
-    #         "UpdatedAt": "cr0b4_updated_at",
+    #         "PersonID": "group_id",
+    #         "Name": "name",
+    #         "CreatedAt": "created_at",
+    #         "UpdatedAt": "updated_at",
     #     },
     # },
 }

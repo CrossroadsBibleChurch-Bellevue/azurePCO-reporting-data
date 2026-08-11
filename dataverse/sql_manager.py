@@ -130,27 +130,27 @@ def load_people_staging(conn, people):
 
     rows = [
         (
-            p["cr0b4_person_id"],
-            p["cr0b4_birthdate"],
-            p["cr0b4_child"],
-            p["cr0b4_created_at"],
-            p["cr0b4_first_name"],
-            p["cr0b4_gender"],
-            p["cr0b4_given_name"],
-            p["cr0b4_grade"],
-            p["cr0b4_graduation_year"],
-            p["cr0b4_inactivated_at"],
-            p["cr0b4_inactive_reason"],
-            p["cr0b4_last_name"],
-            p["cr0b4_marital_status"],
-            p["cr0b4_medical_notes"],
-            p["cr0b4_membership"],
-            p["cr0b4_middle_name"],
-            p["cr0b4_name"],
-            p["cr0b4_nickname"],
-            p["cr0b4_passed_background_check"],
-            p["cr0b4_status"],
-            p["cr0b4_updated_at"]
+            p["person_id"],
+            p["birthdate"],
+            p["child"],
+            p["created_at"],
+            p["first_name"],
+            p["gender"],
+            p["given_name"],
+            p["grade"],
+            p["graduation_year"],
+            p["inactivated_at"],
+            p["inactive_reason"],
+            p["last_name"],
+            p["marital_status"],
+            p["medical_notes"],
+            p["membership"],
+            p["middle_name"],
+            p["name"],
+            p["nickname"],
+            p["passed_background_check"],
+            p["status"],
+            p["updated_at"]
         )
         for p in people_rows
     ]

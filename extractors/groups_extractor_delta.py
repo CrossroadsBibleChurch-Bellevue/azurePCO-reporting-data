@@ -137,9 +137,6 @@ def extraction() -> Dict[str, List[Dict[str, Any]]]:
     logging.info("Fetching groups...")
     groups = fetch_groups(client, include_archived=True)
 
-    if group_limit is not None:
-        groups = groups[:group_limit]
-
     group_ids = {group["id"] for group in groups}
 
     logging.info("Fetching tag groups...")

@@ -405,7 +405,6 @@ def build_all_attendance_table_rows(
                         "hash_id": stable_hash_id("event_attendance", event.get("id"), person_id),
                         "group_id": group_id,
                         "event_instance_id": event.get("id"),
-                        "event_name": event.get("name"),
                         "person_id": person_id,
                         "current_group_member": membership is not None,
                         "membership_id": (

@@ -7,10 +7,10 @@ CREATE TABLE dbo.records
 )
 
 
-CREATE TABLE dbo.PCO_People_Address_Staging
+CREATE TABLE dbo.STAGING_PCO_People_Address
 (
     HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     City NVARCHAR(100) NULL,
     CountryCode NVARCHAR(100) NULL,
     CountryName NVARCHAR(100) NULL,
@@ -22,9 +22,9 @@ CREATE TABLE dbo.PCO_People_Address_Staging
     Zip NVARCHAR(100) NULL
 )
 
-CREATE TABLE dbo.PCO_People_Core_Staging
+CREATE TABLE dbo.STAGING_PCO_People_Core
 (
-    PlanningCenterId INT NOT NULL PRIMARY KEY,
+    PersonID INT NOT NULL PRIMARY KEY,
     BirthDate NVARCHAR(500) NULL,
     Child NVARCHAR(500) NULL,
     CreatedAt NVARCHAR(500) NULL,
@@ -47,7 +47,7 @@ CREATE TABLE dbo.PCO_People_Core_Staging
     UpdatedAt NVARCHAR(500) NULL
 )
 
-CREATE TABLE dbo.PCO_People_CustomFields_Staging
+CREATE TABLE dbo.STAGING_PCO_People_CustomFields
 (
     HashId NVARCHAR(200) PRIMARY KEY,
     FieldDataType NVARCHAR(100) NULL,
@@ -57,34 +57,34 @@ CREATE TABLE dbo.PCO_People_CustomFields_Staging
     FieldTabName NVARCHAR(100) NULL
 )
 
-CREATE TABLE dbo.PCO_People_CustomTabs_Staging
+CREATE TABLE dbo.STAGING_PCO_People_CustomTabs
 (
     HashId NVARCHAR(200) PRIMARY KEY,
     TabId NVARCHAR(100) NULL,
     TabName NVARCHAR(100) NULL
 )
 
-CREATE TABLE dbo.PCO_People_CustomValue_Staging
+CREATE TABLE dbo.STAGING_PCO_People_CustomValue
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     CustomFieldHash NVARCHAR(100) NULL,
     CustomValue NVARCHAR(1000) NULL
 )
 
-CREATE TABLE dbo.PCO_People_Email_Staging
+CREATE TABLE dbo.STAGING_PCO_People_Email
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     EmailAddress NVARCHAR(100) NULL,
     Location NVARCHAR(100) NULL,
     PrimaryLocation NVARCHAR(100) NULL
 )
 
-CREATE TABLE dbo.PCO_People_Household_Staging
+CREATE TABLE dbo.STAGING_PCO_People_Household
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     HouseholdId NVARCHAR(100) NULL,
     HouseholdName NVARCHAR(100) NULL,
     MemberCount NVARCHAR(100) NULL,
@@ -92,10 +92,10 @@ CREATE TABLE dbo.PCO_People_Household_Staging
     PrimaryContactName NVARCHAR(100) NULL
 )
 
-CREATE TABLE dbo.PCO_People_Phone_Staging
+CREATE TABLE dbo.STAGING_PCO_People_Phone
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     CountryCode NVARCHAR(100) NULL,
     PhoneNumber NVARCHAR(100) NULL,
     Location NVARCHAR(100) NULL,
@@ -108,7 +108,7 @@ CREATE TABLE dbo.PCO_People_Phone_Staging
 CREATE TABLE dbo.PCO_People_Address
 (
     HashId NVARCHAR(200) NOT NULL PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     City NVARCHAR(100) NULL,
     CountryCode NVARCHAR(100) NULL,
     CountryName NVARCHAR(100) NULL,
@@ -122,7 +122,7 @@ CREATE TABLE dbo.PCO_People_Address
 
 CREATE TABLE dbo.PCO_People_Core
 (
-    PlanningCenterId INT NOT NULL PRIMARY KEY,
+    PersonID INT NOT NULL PRIMARY KEY,
     BirthDate NVARCHAR(500) NULL,
     Child NVARCHAR(500) NULL,
     CreatedAt NVARCHAR(500) NULL,
@@ -165,7 +165,7 @@ CREATE TABLE dbo.PCO_People_CustomTabs
 CREATE TABLE dbo.PCO_People_CustomValue
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     CustomFieldHash NVARCHAR(100) NULL,
     CustomValue NVARCHAR(1000) NULL
 )
@@ -173,7 +173,7 @@ CREATE TABLE dbo.PCO_People_CustomValue
 CREATE TABLE dbo.PCO_People_Email
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     EmailAddress NVARCHAR(100) NULL,
     Location NVARCHAR(100) NULL,
     PrimaryLocation NVARCHAR(100) NULL
@@ -182,7 +182,7 @@ CREATE TABLE dbo.PCO_People_Email
 CREATE TABLE dbo.PCO_People_Household
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     HouseholdId NVARCHAR(100) NULL,
     HouseholdName NVARCHAR(100) NULL,
     MemberCount NVARCHAR(100) NULL,
@@ -193,7 +193,7 @@ CREATE TABLE dbo.PCO_People_Household
 CREATE TABLE dbo.PCO_People_Phone
 (
     HashId NVARCHAR(200) PRIMARY KEY,
-    PlanningCenterId INT NULL,
+    PersonID INT NULL,
     CountryCode NVARCHAR(100) NULL,
     PhoneNumber NVARCHAR(100) NULL,
     Location NVARCHAR(100) NULL,
@@ -205,7 +205,7 @@ CREATE TABLE dbo.PCO_People_Phone
    GROUP QUERIES
    ============================================================ */
 
-CREATE TABLE dbo.PCO_GROUPS_overview
+CREATE TABLE dbo.PCO_Groups_overview
 (
     GroupID                 BIGINT             NOT NULL,
     GroupName               NVARCHAR(500)      NULL,
@@ -218,12 +218,12 @@ CREATE TABLE dbo.PCO_GROUPS_overview
     CreatedAt               DATETIMEOFFSET(7)  NULL,
     ArchivedAt              DATETIMEOFFSET(7)  NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_overview
+    CONSTRAINT PK_PCO_Groups_overview
         PRIMARY KEY CLUSTERED (GroupID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_overview_STAGING
+CREATE TABLE dbo.STAGING_PCO_Groups_overview
 (
     GroupID                 BIGINT             NOT NULL,
     GroupName               NVARCHAR(500)      NULL,
@@ -238,19 +238,19 @@ CREATE TABLE dbo.PCO_GROUPS_overview_STAGING
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_types
+CREATE TABLE dbo.PCO_Groups_types
 (
     GroupTypeID          BIGINT          NOT NULL,
     GroupTypeName        NVARCHAR(500)   NULL,
     ChurchCenterVisible  BIT             NULL,
     GroupCount           INT             NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_types
+    CONSTRAINT PK_PCO_Groups_types
         PRIMARY KEY CLUSTERED (GroupTypeID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_types_STAGING
+CREATE TABLE dbo.STAGING_PCO_Groups_types
 (
     GroupTypeID          BIGINT          NOT NULL,
     GroupTypeName        NVARCHAR(500)   NULL,
@@ -259,18 +259,18 @@ CREATE TABLE dbo.PCO_GROUPS_types_STAGING
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_group_tags
+CREATE TABLE dbo.PCO_Groups_group_tags
 (
     HashID   NVARCHAR(200)  NOT NULL,
     GroupID  BIGINT       NULL,
     TagID    BIGINT       NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_group_tags
+    CONSTRAINT PK_PCO_Groups_group_tags
         PRIMARY KEY CLUSTERED (HashID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_group_tags_STAGING
+CREATE TABLE dbo.STAGING_PCO_Groups_group_tags
 (
     HashID   NVARCHAR(200)  NOT NULL,
     GroupID  BIGINT       NULL,
@@ -278,18 +278,18 @@ CREATE TABLE dbo.PCO_GROUPS_group_tags_STAGING
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_tags
+CREATE TABLE dbo.PCO_Groups_tags
 (
     TagID       BIGINT          NOT NULL,
     TagGroupID  BIGINT          NULL,
     TagName     NVARCHAR(500)   NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_tags
+    CONSTRAINT PK_PCO_Groups_tags
         PRIMARY KEY CLUSTERED (TagID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_tags_STAGING
+CREATE TABLE dbo.STAGING_PCO_Groups_tags
 (
     TagID       BIGINT          NOT NULL,
     TagGroupID  BIGINT          NULL,
@@ -298,19 +298,19 @@ CREATE TABLE dbo.PCO_GROUPS_tags_STAGING
 GO
 
 
-CREATE TABLE dbo.PCO_GROUPS_tag_groups
+CREATE TABLE dbo.PCO_Groups_tag_groups
 (
     TagGroupID             BIGINT          NOT NULL,
     TagGroupName           NVARCHAR(500)   NULL,
     DisplayPublicly        BIT             NULL,
     MultipleOptionsEnabled BIT             NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_tag_groups
+    CONSTRAINT PK_PCO_Groups_tag_groups
         PRIMARY KEY CLUSTERED (TagGroupID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_tag_groups_STAGING
+CREATE TABLE dbo.STAGING_PCO_Groups_tag_groups
 (
     TagGroupID             BIGINT          NOT NULL,
     TagGroupName           NVARCHAR(500)   NULL,
@@ -319,7 +319,7 @@ CREATE TABLE dbo.PCO_GROUPS_tag_groups_STAGING
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Events
+CREATE TABLE dbo.PCO_Groups_Events
 (
     EventID                 BIGINT          NOT NULL,
     PCORepeatingEventID     BIGINT          NULL,
@@ -330,12 +330,12 @@ CREATE TABLE dbo.PCO_GROUPS_Events
     LocationTypePreference  NVARCHAR(100)   NULL,
     LocationID              BIGINT          NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_Events
+    CONSTRAINT PK_PCO_Groups_Events
         PRIMARY KEY CLUSTERED (EventID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Events_Staging
+CREATE TABLE dbo.STAGING_PCO_Groups_Events
 (
     EventID                 BIGINT          NOT NULL,
     PCORepeatingEventID     BIGINT          NULL,
@@ -348,7 +348,7 @@ CREATE TABLE dbo.PCO_GROUPS_Events_Staging
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Event_Instances
+CREATE TABLE dbo.PCO_Groups_Event_Instances
 (
     EventInstanceID  BIGINT             NOT NULL,
     EventID          BIGINT             NULL,
@@ -360,12 +360,12 @@ CREATE TABLE dbo.PCO_GROUPS_Event_Instances
     Classification   NVARCHAR(100)      NULL,
     LocationID       BIGINT             NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_Event_Instances
+    CONSTRAINT PK_PCO_Groups_Event_Instances
         PRIMARY KEY CLUSTERED (EventInstanceID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Event_Instances_Staging
+CREATE TABLE dbo.STAGING_PCO_Groups_Event_Instances
 (
     EventInstanceID  BIGINT             NOT NULL,
     EventID          BIGINT             NULL,
@@ -379,11 +379,10 @@ CREATE TABLE dbo.PCO_GROUPS_Event_Instances_Staging
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Event_Attendances
+CREATE TABLE dbo.PCO_Groups_Event_Attendances
 (
     HashID                   NVARCHAR(200)      NOT NULL,
     EventInstanceID          BIGINT           NULL,
-    EventName                NVARCHAR(500)    NULL,
     PersonID                 BIGINT           NULL,
     CurrentGroupMember       BIT              NULL,
     MembershipRole           NVARCHAR(100)    NULL,
@@ -392,16 +391,15 @@ CREATE TABLE dbo.PCO_GROUPS_Event_Attendances
     Attended                  BIT              NULL,
     AttendanceRecordExists   BIT              NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_Event_Attendances
+    CONSTRAINT PK_PCO_Groups_Event_Attendances
         PRIMARY KEY CLUSTERED (HashID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Event_Attendances_Staging
+CREATE TABLE dbo.STAGING_PCO_Groups_Event_Attendances
 (
     HashID                   NVARCHAR(200)      NOT NULL,
     EventInstanceID          BIGINT           NULL,
-    EventName                NVARCHAR(500)    NULL,
     PersonID                 BIGINT           NULL,
     CurrentGroupMember       BIT              NULL,
     MembershipRole           NVARCHAR(100)    NULL,
@@ -412,7 +410,7 @@ CREATE TABLE dbo.PCO_GROUPS_Event_Attendances_Staging
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Members
+CREATE TABLE dbo.PCO_Groups_Members
 (
     MembershipID  BIGINT             NOT NULL,
     PersonID      BIGINT             NULL,
@@ -420,12 +418,12 @@ CREATE TABLE dbo.PCO_GROUPS_Members
     Role          NVARCHAR(100)      NULL,
     JoinedAt      DATETIMEOFFSET(7)  NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_Members
+    CONSTRAINT PK_PCO_Groups_Members
         PRIMARY KEY CLUSTERED (MembershipID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Members_Staging
+CREATE TABLE dbo.STAGING_PCO_Groups_Members
 (
     MembershipID  BIGINT             NOT NULL,
     PersonID      BIGINT             NULL,
@@ -435,7 +433,7 @@ CREATE TABLE dbo.PCO_GROUPS_Members_Staging
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Members_History
+CREATE TABLE dbo.PCO_Groups_Members_History
 (
     MembershipID  BIGINT             NOT NULL,
     PersonID      BIGINT             NULL,
@@ -444,12 +442,12 @@ CREATE TABLE dbo.PCO_GROUPS_Members_History
     JoinedAt      DATETIMEOFFSET(7)  NULL,
     LeftAt        DATETIMEOFFSET(7)  NULL,
 
-    CONSTRAINT PK_PCO_GROUPS_Members_History
+    CONSTRAINT PK_PCO_Groups_Members_History
         PRIMARY KEY CLUSTERED (MembershipID)
 );
 GO
 
-CREATE TABLE dbo.PCO_GROUPS_Members_History_Staging
+CREATE TABLE dbo.STAGING_PCO_Groups_Members_History
 (
     MembershipID  BIGINT             NOT NULL,
     PersonID      BIGINT             NULL,
@@ -475,7 +473,7 @@ CREATE TABLE dbo.PCO_Check_Ins_Events
 GO
 
 
-CREATE TABLE dbo.PCO_Check_Ins_Event_STAGING
+CREATE TABLE dbo.STAGING_PCO_Check_Ins_Events
 (
     CheckInEventID BIGINT NOT NULL,
     EventName      NVARCHAR(255) NULL,
@@ -506,7 +504,7 @@ CREATE TABLE dbo.PCO_Check_Ins_Event_Instances
 GO
 
 
-CREATE TABLE dbo.PCO_Check_Ins_Event_Instances_STAGING
+CREATE TABLE dbo.STAGING_PCO_Check_Ins_Event_Instances
 (
     CheckInEventInstanceID BIGINT NOT NULL,
     CheckInEventID         BIGINT NULL,
@@ -542,7 +540,7 @@ CREATE TABLE dbo.PCO_Check_Ins_Attendance
 GO
 
 
-CREATE TABLE dbo.PCO_Check_Ins_Attendance_STAGING
+CREATE TABLE dbo.STAGING_PCO_Check_Ins_Attendance
 (
     CheckInEventAttendanceID BIGINT NOT NULL,
     CheckInID                BIGINT NULL,
@@ -578,7 +576,7 @@ CREATE TABLE dbo.PCO_Check_Ins_Event_Times
 GO
 
 
-CREATE TABLE dbo.PCO_Check_Ins_Event_Times_STAGING
+CREATE TABLE dbo.STAGING_PCO_Check_Ins_Event_Times
 (
     EventTimeID            BIGINT NOT NULL,
     CheckInEventID         BIGINT NULL,
@@ -612,7 +610,7 @@ CREATE TABLE dbo.PCO_Check_Ins_Headcounts
 GO
 
 
-CREATE TABLE dbo.PCO_Check_Ins_Headcounts_STAGING
+CREATE TABLE dbo.STAGING_PCO_Check_Ins_Headcounts
 (
     HeadcountID            BIGINT NOT NULL,
     CheckInEventID         BIGINT NULL,

@@ -76,6 +76,8 @@ def load_config() -> Config:
         event_id=getenv_blank_as_none("PCO_EVENT_ID"),
         start_date=parse_date_env("PCO_START_DATE"),
         end_date=parse_date_env("PCO_END_DATE"),
+        checkin_updated_since=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        event_time_updated_since=datetime(1970, 1, 1, tzinfo=timezone.utc),
         output_dir=output_dir,
         output_prefix=output_prefix,
         max_events=max_events,
@@ -121,7 +123,7 @@ def threaded_fetch_event_periods(config: Config, event_id: str) -> list[dict[str
 
 
 def threaded_fetch_event_checkins(config: Config, event_id: str) -> list[dict[str, Any]]:
-    return fetch_event_checkins(get_thread_client(config), event_id)
+    return fetch_event_checkins(get_thread_client(config), config, event_id)
 
 
 def threaded_fetch_event_time_headcounts(config: Config, event_time_id: str) -> list[dict[str, Any]]:
