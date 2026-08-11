@@ -13,7 +13,7 @@ from orchestrators.check_ins_orchestrator_full import main as checkins_full
 app = func.FunctionApp()
 
 
-@app.timer_trigger(schedule="0 0 5 */1 * *", arg_name="myTimer", run_on_startup=True,
+@app.timer_trigger(schedule="0 0 5 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def deep_data_extraction(myTimer: func.TimerRequest) -> None:
     #extractor_calendar(client)
