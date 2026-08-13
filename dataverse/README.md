@@ -1,0 +1,1 @@
+This folder isn't really used much, only by the calendar orchestrator because that is still hooked up for usage with Dataverse not SQL. It can probably go away when the Calendar is moved to SQL usage, so I won't go into too much depth on what these files do. They just get credentials and then upsert to dataverse pretty much.

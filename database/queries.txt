@@ -651,3 +651,411 @@ GO
 CREATE INDEX IX_PCO_CheckInHeadcounts_EventTimeID
     ON dbo.PCO_Check_Ins_Headcounts (EventTimeID);
 GO
+
+
+
+/* ============================================================
+   1. SIGNUP
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Signup', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Signup
+    (
+        SignupID            BIGINT          NOT NULL,
+        [Name]              NVARCHAR(500)   NULL,
+        Archived            BIT             NULL,
+        [Open]              BIT             NULL,
+        [Closed]            BIT             NULL,
+        AtMaximumCapacity   BIT             NULL,
+        MaximumCapacity     INT             NULL,
+        OpenAt              DATETIME2(7)    NULL,
+        CloseAt             DATETIME2(7)    NULL,
+        CreatedAt           DATETIME2(7)    NULL,
+        UpdatedAt           DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Signup
+            PRIMARY KEY CLUSTERED (SignupID)
+    );
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Signup', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Signup
+    (
+        SignupID            BIGINT          NOT NULL,
+        [Name]              NVARCHAR(500)   NULL,
+        Archived            BIT             NULL,
+        [Open]              BIT             NULL,
+        [Closed]            BIT             NULL,
+        AtMaximumCapacity   BIT             NULL,
+        MaximumCapacity     INT             NULL,
+        OpenAt              DATETIME2(7)    NULL,
+        CloseAt             DATETIME2(7)    NULL,
+        CreatedAt           DATETIME2(7)    NULL,
+        UpdatedAt           DATETIME2(7)    NULL
+    );
+END;
+
+
+/* ============================================================
+   2. SIGNUP TIME
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Signup_Time', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Signup_Time
+    (
+        SignupTimeID        BIGINT          NOT NULL,
+        SignupID            BIGINT          NULL,
+        StartsAt            DATETIME2(7)    NULL,
+        EndsAt              DATETIME2(7)    NULL,
+        AllDay              BIT             NULL,
+        IsNextSignupTime    BIT             NULL,
+        CreatedAt           DATETIME2(7)    NULL,
+        UpdatedAt           DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Signup_Time
+            PRIMARY KEY CLUSTERED (SignupTimeID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Signup_Time_SignupID
+        ON dbo.PCO_Registrations_Signup_Time (SignupID);
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Signup_Time', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Signup_Time
+    (
+        SignupTimeID        BIGINT          NOT NULL,
+        SignupID            BIGINT          NULL,
+        StartsAt            DATETIME2(7)    NULL,
+        EndsAt              DATETIME2(7)    NULL,
+        AllDay              BIT             NULL,
+        IsNextSignupTime    BIT             NULL,
+        CreatedAt           DATETIME2(7)    NULL,
+        UpdatedAt           DATETIME2(7)    NULL
+    );
+END;
+
+
+/* ============================================================
+   3. REGISTRATION
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Registration', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Registration
+    (
+        RegistrationID             BIGINT          NOT NULL,
+        SignupID                   BIGINT          NULL,
+        CreatedByPersonID          BIGINT          NULL,
+        RegistrantContactPersonID  BIGINT          NULL,
+        TotalCost                  NVARCHAR(50)    NULL,
+        TotalCostCents             BIGINT          NULL,
+        TotalDue                   NVARCHAR(50)    NULL,
+        TotalDueCents              BIGINT          NULL,
+        TotalPaid                  NVARCHAR(50)    NULL,
+        TotalPaidCents             BIGINT          NULL,
+        CreatedAt                  DATETIME2(7)    NULL,
+        UpdatedAt                  DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Registration
+            PRIMARY KEY CLUSTERED (RegistrationID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Registration_SignupID
+        ON dbo.PCO_Registrations_Registration (SignupID);
+
+    CREATE INDEX IX_PCO_Registrations_Registration_CreatedByPersonID
+        ON dbo.PCO_Registrations_Registration (CreatedByPersonID);
+
+    CREATE INDEX IX_PCO_Registrations_Registration_ContactPersonID
+        ON dbo.PCO_Registrations_Registration (RegistrantContactPersonID);
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Registration', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Registration
+    (
+        RegistrationID             BIGINT          NOT NULL,
+        SignupID                   BIGINT          NULL,
+        CreatedByPersonID          BIGINT          NULL,
+        RegistrantContactPersonID  BIGINT          NULL,
+        TotalCost                  NVARCHAR(50)    NULL,
+        TotalCostCents             BIGINT          NULL,
+        TotalDue                   NVARCHAR(50)    NULL,
+        TotalDueCents              BIGINT          NULL,
+        TotalPaid                  NVARCHAR(50)    NULL,
+        TotalPaidCents             BIGINT          NULL,
+        CreatedAt                  DATETIME2(7)    NULL,
+        UpdatedAt                  DATETIME2(7)    NULL
+    );
+END;
+
+
+/* ============================================================
+   4. REGISTERING PARTY
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Registering_Party', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Registering_Party
+    (
+        RegistrationID             BIGINT      NOT NULL,
+        SignupID                   BIGINT      NULL,
+        RegistrantContactPersonID  BIGINT      NULL,
+        CreatedByPersonID          BIGINT      NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Registering_Party
+            PRIMARY KEY CLUSTERED (RegistrationID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Registering_Party_SignupID
+        ON dbo.PCO_Registrations_Registering_Party (SignupID);
+
+    CREATE INDEX IX_PCO_Registrations_Registering_Party_ContactPersonID
+        ON dbo.PCO_Registrations_Registering_Party
+        (
+            RegistrantContactPersonID
+        );
+
+    CREATE INDEX IX_PCO_Registrations_Registering_Party_CreatedByPersonID
+        ON dbo.PCO_Registrations_Registering_Party
+        (
+            CreatedByPersonID
+        );
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Registering_Party', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Registering_Party
+    (
+        RegistrationID             BIGINT      NOT NULL,
+        SignupID                   BIGINT      NULL,
+        RegistrantContactPersonID  BIGINT      NULL,
+        CreatedByPersonID          BIGINT      NULL
+    );
+END;
+
+
+/* ============================================================
+   5. NAMED ATTENDEE
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Named_Attendee', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Named_Attendee
+    (
+        AttendeeID         BIGINT          NOT NULL,
+        PersonID           BIGINT          NULL,
+        SignupID           BIGINT          NULL,
+        RegistrationID     BIGINT          NULL,
+        SelectionTypeID    BIGINT          NULL,
+        EmergencyContactID BIGINT          NULL,
+        Active             BIT             NULL,
+        Canceled           BIT             NULL,
+        Complete           BIT             NULL,
+        Waitlisted         BIT             NULL,
+        WaitlistedAt       DATETIME2(7)    NULL,
+        CreatedAt          DATETIME2(7)    NULL,
+        UpdatedAt          DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Named_Attendee
+            PRIMARY KEY CLUSTERED (AttendeeID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Named_Attendee_PersonID
+        ON dbo.PCO_Registrations_Named_Attendee (PersonID);
+
+    CREATE INDEX IX_PCO_Registrations_Named_Attendee_SignupID
+        ON dbo.PCO_Registrations_Named_Attendee (SignupID);
+
+    CREATE INDEX IX_PCO_Registrations_Named_Attendee_RegistrationID
+        ON dbo.PCO_Registrations_Named_Attendee (RegistrationID);
+
+    CREATE INDEX IX_PCO_Registrations_Named_Attendee_SelectionTypeID
+        ON dbo.PCO_Registrations_Named_Attendee (SelectionTypeID);
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Named_Attendee', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Named_Attendee
+    (
+        AttendeeID         BIGINT          NOT NULL,
+        PersonID           BIGINT          NULL,
+        SignupID           BIGINT          NULL,
+        RegistrationID     BIGINT          NULL,
+        SelectionTypeID    BIGINT          NULL,
+        EmergencyContactID BIGINT          NULL,
+        Active             BIT             NULL,
+        Canceled           BIT             NULL,
+        Complete           BIT             NULL,
+        Waitlisted         BIT             NULL,
+        WaitlistedAt       DATETIME2(7)    NULL,
+        CreatedAt          DATETIME2(7)    NULL,
+        UpdatedAt          DATETIME2(7)    NULL
+    );
+END;
+
+
+/* ============================================================
+   6. ATTENDEE SELECTION
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Attendee_Selection', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Attendee_Selection
+    (
+        HashID              NVARCHAR(128)   NOT NULL,
+        AttendeeID          BIGINT          NULL,
+        SelectionTypeID     BIGINT          NULL,
+        AttendeeActive      BIT             NULL,
+        AttendeeCanceled    BIT             NULL,
+        AttendeeWaitlisted  BIT             NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Attendee_Selection
+            PRIMARY KEY CLUSTERED (HashID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Attendee_Selection_AttendeeID
+        ON dbo.PCO_Registrations_Attendee_Selection (AttendeeID);
+
+    CREATE INDEX IX_PCO_Registrations_Attendee_Selection_SelectionTypeID
+        ON dbo.PCO_Registrations_Attendee_Selection (SelectionTypeID);
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Attendee_Selection', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Attendee_Selection
+    (
+        HashID              NVARCHAR(128)   NOT NULL,
+        AttendeeID          BIGINT          NULL,
+        SelectionTypeID     BIGINT          NULL,
+        AttendeeActive      BIT             NULL,
+        AttendeeCanceled    BIT             NULL,
+        AttendeeWaitlisted  BIT             NULL
+    );
+END;
+
+
+/* ============================================================
+   7. SIGNUP CATEGORY
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Signup_Category', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Signup_Category
+    (
+        HashID      NVARCHAR(128)   NOT NULL,
+        SignupID    BIGINT          NULL,
+        CategoryID  BIGINT          NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Signup_Category
+            PRIMARY KEY CLUSTERED (HashID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Signup_Category_SignupID
+        ON dbo.PCO_Registrations_Signup_Category (SignupID);
+
+    CREATE INDEX IX_PCO_Registrations_Signup_Category_CategoryID
+        ON dbo.PCO_Registrations_Signup_Category (CategoryID);
+
+    CREATE UNIQUE INDEX UX_PCO_Registrations_Signup_Category_Relationship
+        ON dbo.PCO_Registrations_Signup_Category
+        (
+            SignupID,
+            CategoryID
+        );
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Signup_Category', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Signup_Category
+    (
+        HashID      NVARCHAR(128)   NOT NULL,
+        SignupID    BIGINT          NULL,
+        CategoryID  BIGINT          NULL
+    );
+END;
+
+
+/* ============================================================
+   8. CATEGORY
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Category', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Category
+    (
+        CategoryID  BIGINT          NOT NULL,
+        [Name]      NVARCHAR(255)   NULL,
+        CreatedAt   DATETIME2(7)    NULL,
+        UpdatedAt   DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Category
+            PRIMARY KEY CLUSTERED (CategoryID)
+    );
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Category', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Category
+    (
+        CategoryID  BIGINT          NOT NULL,
+        [Name]      NVARCHAR(255)   NULL,
+        CreatedAt   DATETIME2(7)    NULL,
+        UpdatedAt   DATETIME2(7)    NULL
+    );
+END;
+
+
+/* ============================================================
+   9. SELECTION TYPE
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.PCO_Registrations_Selection_Type', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PCO_Registrations_Selection_Type
+    (
+        SelectionTypeID       BIGINT          NOT NULL,
+        SignupID              BIGINT          NULL,
+        [Name]                NVARCHAR(1000)  NULL,
+        PriceFormatted        NVARCHAR(50)    NULL,
+        PriceCents            BIGINT          NULL,
+        PriceCurrency         NVARCHAR(10)    NULL,
+        MaximumCapacity       INT             NULL,
+        AvailableCapacity     INT             NULL,
+        AtMaximumCapacity     BIT             NULL,
+        PubliclyAvailable     BIT             NULL,
+        Waitlist              BIT             NULL,
+        CreatedAt             DATETIME2(7)    NULL,
+        UpdatedAt             DATETIME2(7)    NULL,
+
+        CONSTRAINT PK_PCO_Registrations_Selection_Type
+            PRIMARY KEY CLUSTERED (SelectionTypeID)
+    );
+
+    CREATE INDEX IX_PCO_Registrations_Selection_Type_SignupID
+        ON dbo.PCO_Registrations_Selection_Type (SignupID);
+END;
+
+IF OBJECT_ID(N'dbo.STAGING_PCO_Registrations_Selection_Type', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.STAGING_PCO_Registrations_Selection_Type
+    (
+        SelectionTypeID       BIGINT          NOT NULL,
+        SignupID              BIGINT          NULL,
+        [Name]                NVARCHAR(1000)  NULL,
+        PriceFormatted        NVARCHAR(50)    NULL,
+        PriceCents            BIGINT          NULL,
+        PriceCurrency         NVARCHAR(10)    NULL,
+        MaximumCapacity       INT             NULL,
+        AvailableCapacity     INT             NULL,
+        AtMaximumCapacity     BIT             NULL,
+        PubliclyAvailable     BIT             NULL,
+        Waitlist              BIT             NULL,
+        CreatedAt             DATETIME2(7)    NULL,
+        UpdatedAt             DATETIME2(7)    NULL
+    );
+END;

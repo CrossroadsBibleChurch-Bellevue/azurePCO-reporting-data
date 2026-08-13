@@ -136,3 +136,4 @@ __azurite_db*__.json
 
 # Cache file
 pco_checkins_test_fetch_cache.json
+.pco_api_cache/

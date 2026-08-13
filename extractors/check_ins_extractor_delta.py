@@ -18,7 +18,7 @@ from dateutil.parser import isoparse
 
 from utils.time_functions import convert_output_datetimes_to_local_sql
 from utils.check_ins_shared import PCOError, Config, PCOClient, attrs, rel_id
-from utils.check_ins_builders import build_checkin_event_attendance_rows, build_checkin_event_instance_rows, build_checkin_event_rows, build_event_time_rows, build_headcount_rows
+from extractors.builders.check_ins_builders import build_checkin_event_attendance_rows, build_checkin_event_instance_rows, build_checkin_event_rows, build_event_time_rows, build_headcount_rows
 from extractors.fetchers.check_ins_fetchers import fetch_events, fetch_attendance_types, fetch_event_checkins, fetch_event_periods, fetch_event_time_headcounts, fetch_event_times_delta, fetch_location_event_times
 from database.fetch_record import fetch_updated_at_checkins
 

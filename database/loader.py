@@ -474,7 +474,7 @@ def load_staging(
         if input_sizes is not None:
             cursor.setinputsizes(input_sizes)
 
-        batch_size = 50000
+        batch_size = 10000
 
         for batch_number, batch in enumerate(
             chunk_rows(rows, chunk_size=batch_size),
@@ -748,13 +748,19 @@ def uploader(tables: Dict[str, Any], endpoint) -> None:
     try:
         conn = get_connection()
 
-        for table_name, records in tables.items():
-            process_table(
-                conn=conn,
-                table_name=table_name,
-                raw_records=records,
-                group_name=group_name
-            )
+        for table_name in list(tables):
+            rows = tables.pop(table_name)
+
+            try:
+                process_table(
+                    conn=conn,
+                    table_name=table_name,
+                    raw_records=rows,
+                    group_name=group_name
+                )
+            finally:
+                rows.clear()
+                del rows
 
         update_delta_record(conn, endpoint)
 

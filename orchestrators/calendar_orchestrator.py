@@ -1,8 +1,14 @@
 import time
 
-from extractors.calendar_extractor import extract_tables  # your extractor module name
+from extractors.calendar_extractor import extract_tables
 from dataverse.dataverse_keys_and_upsert import ensure_keys_and_upsert_all
 from utils.env_fetcher import DATAVERSE_ORG_URL
+
+
+# This is the orchestrator for the Calendar endpoint, delta refresh. This one has a little more to it, since it was originally created for usage with PowerApps and Dataverse, so different needs.
+# Currently, not used in this Azure Function, but could be later on if need be, would just need to change some things around to adapt to Azure SQL.
+
+
 
 TABLE_MAP = {
     "owners": "cr548_ownersv4",

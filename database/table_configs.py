@@ -458,6 +458,193 @@ TABLE_CONFIGS = {
         },
     },
 
+    "signup": {
+        "target_table": "dbo.PCO_Registrations_Signup",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Signup",
+        "key_columns": ["SignupID"],
+        "required_source_keys": [
+            "signup_id"
+        ],
+        "column_map": {
+            "SignupID": "signup_id",
+            "Name": "name",
+            "Archived": "archived",
+            "Open": "open",
+            "Closed": "closed",
+            "AtMaximumCapacity": "at_maximum_capacity",
+            "MaximumCapacity": "maximum_capacity",
+            "OpenAt": "open_at",
+            "CloseAt": "close_at",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+
+        "input_sizes": [
+            (pyodbc.SQL_BIGINT, 0, 0),          # SignupID
+            (pyodbc.SQL_WVARCHAR, 255, 0),       # Name
+            (pyodbc.SQL_BIT, 0, 0),              # Archived
+            (pyodbc.SQL_BIT, 0, 0),              # Open
+            (pyodbc.SQL_BIT, 0, 0),              # Closed
+            (pyodbc.SQL_BIT, 0, 0),              # AtMaximumCapacity
+            (pyodbc.SQL_INTEGER, 0, 0),          # MaximumCapacity
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 3),   # OpenAt
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 3),   # CloseAt
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 3),   # CreatedAt
+            (pyodbc.SQL_TYPE_TIMESTAMP, 0, 3),   # UpdatedAt
+        ],
+    },
+
+    "signuptime": {
+        "target_table": "dbo.PCO_Registrations_Signup_Time",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Signup_Time",
+        "key_columns": ["SignupTimeID"],
+        "required_source_keys": [
+            "signup_time_id"
+        ],
+        "column_map": {
+            "SignupTimeID": "signup_time_id",
+            "SignupID": "signup_id",
+            "StartsAt": "starts_at",
+            "EndsAt": "ends_at",
+            "AllDay": "all_day",
+            "IsNextSignupTime": "is_next_signup_time",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "registration": {
+        "target_table": "dbo.PCO_Registrations_Registration",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Registration",
+        "key_columns": ["RegistrationID"],
+        "required_source_keys": [
+            "registration_id"
+        ],
+        "column_map": {
+            "RegistrationID": "registration_id",
+            "SignupID": "signup_id",
+            "CreatedByPersonID": "created_by_person_id",
+            "RegistrantContactPersonID": "registrant_contact_person_id",
+            "TotalCost": "total_cost",
+            "TotalCostCents": "total_cost_cents",
+            "TotalDue": "total_due",
+            "TotalDueCents": "total_due_cents",
+            "TotalPaid": "total_paid",
+            "TotalPaidCents": "total_paid_cents",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "registeringparty": {
+        "target_table": "dbo.PCO_Registrations_Registering_Party",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Registering_Party",
+        "key_columns": ["RegistrationID"],
+        "required_source_keys": [
+            "registration_id"
+        ],
+        "column_map": {
+            "RegistrationID": "registration_id",
+            "SignupID": "signup_id",
+            "RegistrantContactPersonID": "registrant_contact_person_id",
+            "CreatedByPersonID": "created_by_person_id",
+        },
+    },
+
+    "namedattendee": {
+        "target_table": "dbo.PCO_Registrations_Named_Attendee",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Named_Attendee",
+        "key_columns": ["AttendeeID"],
+        "required_source_keys": [
+            "attendee_id"
+        ],
+        "column_map": {
+            "AttendeeID": "attendee_id",
+            "PersonID": "person_id",
+            "SignupID": "signup_id",
+            "RegistrationID": "registration_id",
+            "SelectionTypeID": "selection_type_id",
+            "EmergencyContactID": "emergency_contact_id",
+            "Active": "active",
+            "Canceled": "canceled",
+            "Complete": "complete",
+            "Waitlisted": "waitlisted",
+            "WaitlistedAt": "waitlisted_at",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "attendeeselection": {
+        "target_table": "dbo.PCO_Registrations_Attendee_Selection",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Attendee_Selection",
+        "key_columns": ["HashID"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashID": "hash_id",
+            "AttendeeID": "attendee_id",
+            "SelectionTypeID": "selection_type_id",
+            "AttendeeActive": "attendee_active",
+            "AttendeeCanceled": "attendee_canceled",
+            "AttendeeWaitlisted": "attendee_waitlisted",
+        },
+    },
+
+    "signupcategory": {
+        "target_table": "dbo.PCO_Registrations_Signup_Category",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Signup_Category",
+        "key_columns": ["HashID"],
+        "required_source_keys": [
+            "hash_id"
+        ],
+        "column_map": {
+            "HashID": "hash_id",
+            "SignupID": "signup_id",
+            "CategoryID": "category_id",
+        },
+    },
+
+    "category": {
+        "target_table": "dbo.PCO_Registrations_Category",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Category",
+        "key_columns": ["CategoryID"],
+        "required_source_keys": [
+            "category_id"
+        ],
+        "column_map": {
+            "CategoryID": "category_id",
+            "Name": "name",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
+    "selectiontype": {
+        "target_table": "dbo.PCO_Registrations_Selection_Type",
+        "staging_table": "dbo.STAGING_PCO_Registrations_Selection_Type",
+        "key_columns": ["SelectionTypeID"],
+        "required_source_keys": [
+            "selection_type_id"
+        ],
+        "column_map": {
+            "SelectionTypeID": "selection_type_id",
+            "SignupID": "signup_id",
+            "Name": "name",
+            "PriceFormatted": "price_formatted",
+            "PriceCents": "price_cents",
+            "PriceCurrency": "price_currency",
+            "MaximumCapacity": "maximum_capacity",
+            "AvailableCapacity": "available_capacity",
+            "AtMaximumCapacity": "at_maximum_capacity",
+            "PubliclyAvailable": "publicly_available",
+            "Waitlist": "waitlist",
+            "CreatedAt": "created_at",
+            "UpdatedAt": "updated_at",
+        },
+    },
+
     # Example pattern for another table:
     #
     # "groups": {
