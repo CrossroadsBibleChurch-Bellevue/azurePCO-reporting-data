@@ -3,6 +3,10 @@ from typing import Tuple
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
+
+# Pretty easy and straight forward, just fetches environmental variables that are needed in other files.
+
+
 load_dotenv()
 
 DATAVERSE_ORG_URL = os.getenv("DATAVERSE_ORG_URL")

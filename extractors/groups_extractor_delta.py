@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# To do on Tuesday, hook up this whole system to Azure function, so that it works as it should and is continuously updating data
-
 import sys
 import time
 from collections import defaultdict
@@ -17,6 +15,10 @@ from extractors.builders.group_builders import build_tags_table_rows, build_tag_
 from utils.time_functions import parse_pco_datetime, convert_output_datetimes_to_local_sql, now_utc
 from extractors.fetchers.group_fetchers import fetch_all_tags, fetch_events, fetch_group_tags, fetch_group_types, fetch_groups, fetch_memberships_for_group, fetch_tag_groups, fetch_attendance_for_events, PlanningCenterClient
 from database.prepper import wake_up_server
+
+
+# Groups extractor delta version. To make it delta I just have it fetch the last couple events (5) since my assumption is that will be all that would change if any.
+# Also made it delta this way because the attendance endpoint can't be queried or ordered by updated_at so this is an easier way to do it
 
 
 def classify_and_limit_events(

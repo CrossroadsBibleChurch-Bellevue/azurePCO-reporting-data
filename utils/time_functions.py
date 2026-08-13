@@ -4,7 +4,24 @@ from datetime import datetime, timezone
 
 from utils.env_fetcher import timezone_env
 
+
+# This contains a decent chunk of functions that are related to time, converting values from TZ format to SQL-compatible, etc.
+# When needing to convert a value, make sure to put the field name from the dictionary in the SQL_DATETIME_FIELD_NAMES set, that way it actually gets converted properly.
+# My advice would be to try and reuse these in your extractor or orchestrator files as need to keep those files shorter.
+# Also converts datetimes from loader.py, mainly for CheckIns
+
 LOCAL_TIMEZONE, SQL_DATETIME_FORMAT = timezone_env()
+
+
+NULL_STRINGS = {
+    "",
+    "none",
+    "null",
+    "nan",
+    "n/a",
+    "undefined",
+}
+
 
 SQL_DATETIME_FIELD_NAMES = {
     "generated_at",
@@ -145,3 +162,41 @@ def format_api_datetime(value: datetime) -> str:
         .isoformat(timespec="seconds")
         .replace("+00:00", "Z")
     )
+
+def normalize_optional_datetime(value: Any):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_value = value
+
+    elif isinstance(value, str):
+        cleaned_value = value.strip()
+
+        if cleaned_value.lower() in NULL_STRINGS:
+            return None
+
+        try:
+            parsed_value = datetime.fromisoformat(
+                cleaned_value.replace("Z", "+00:00")
+            )
+
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid datetime value: {value!r}"
+            ) from error
+
+    else:
+        raise TypeError(
+            f"Expected datetime, string, or None, but received "
+            f"{type(value).__name__}: {value!r}"
+        )
+
+    if parsed_value.tzinfo is not None:
+        parsed_value = (
+            parsed_value
+            .astimezone(timezone.utc)
+            .replace(tzinfo=None)
+        )
+
+    return parsed_value

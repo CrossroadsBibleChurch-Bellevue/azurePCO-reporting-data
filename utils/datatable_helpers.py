@@ -3,6 +3,12 @@ from extractors.schemas.people_schemas import build_row_people
 import re
 import sys
 
+
+# This file creates tables for easier use when upserting. Used by calendar and people before better methods were found lol. 
+# Definitely could be cleaned up for better use.
+
+
+
 def sanitize_schema_name(name: str) -> str:
     n = re.sub(r"[^A-Za-z0-9_]", "_", name)
     return n[:80]

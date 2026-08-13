@@ -4,6 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from utils.response_parsers import index_included, safe_get
 from extractors.fetchers.calendar_fetchers import fetch_event_resource_request, fetch_room, fetch_resource_with_questions, fetch_event_resource_answers_for_request
 
+# This file takes in various previous data then goes back to the API to fetch more data that might be needed. Only used by the Calendar.
+# Could be narrowed down either into another file or into includes that are used by API calls.
+
 def build_rooms_cache(auth: Tuple[str, str], room_ids: List[str], max_workers: int) -> Dict[str, Dict[str, Any]]:
     unique = sorted(set([r for r in room_ids if r]))
     cache: Dict[str, Dict[str, Any]] = {}

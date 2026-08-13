@@ -10,6 +10,9 @@ from urllib.parse import urljoin
 from utils.compactors import compact_event, compact_group, compact_group_type, compact_membership, compact_person, compact_tag, compact_tag_group
 
 
+# Just the file that fetches all of the data for the groups extractors.
+
+
 BASE_URL = "https://api.planningcenteronline.com/groups/v2/"
 
 class PCOApiError(RuntimeError):

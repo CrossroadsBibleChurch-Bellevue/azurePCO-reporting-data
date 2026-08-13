@@ -2,6 +2,9 @@ from typing import Optional, Dict, Any
 from utils.response_parsers import rel_id
 
 
+# Pretty much just takes data, parses through it and then returns a row, not much else going on in here.
+
+
 def compact_person(person: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not person:
         return None

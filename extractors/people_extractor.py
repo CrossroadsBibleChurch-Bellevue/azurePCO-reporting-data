@@ -11,6 +11,9 @@ from utils.env_fetcher import get_auth_from_env, PCO_PEOPLE_INCLUDE_PERSON, PCO_
 from utils.datatable_helpers import build_tables
 
 
+# Full people extractor that fetches all data from People endpoint, parses, and organizes into tables for upserting
+
+
 # Threaded function to go through all the pages of the API call, whether that is field_data or people; could be created into a separate file as a function called but not yet lol
 def pco_iter_pages_threaded(
     path: str,

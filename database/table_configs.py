@@ -1,8 +1,31 @@
 import pyodbc
 
-from database.converters import normalize_optional_datetime
+from utils.time_functions import normalize_optional_datetime
+
+
+# This file is what is used by SQL_builders to determine how to format the different values into columns and map them. Also specifies which tables will need to be upserted into and key columns/values needed.
+# To add a new table to SQL and get data put in, follow the example pattern that is commented out or the other tables.
+# The first name is what should be the key in the dictionary that will be stepped through, so if the key is people_address, then that is what it should be here. This assumes a dictionary is being used for tables however.
+# After that just fill in the target and staging table names, as well as key column and required data point. Then map columns to what the keys are in the dictionary.
 
 TABLE_CONFIGS = {
+    # Example pattern for another table:
+    #
+    # "groups": {
+    #     "target_table": "dbo.PCO_Groups",
+    #     "staging_table": "dbo.PCO_Groups_Staging",
+    #     "key_columns": ["PersonID"],
+    #     "required_source_keys": [
+    #         "group_id"
+    #     ],
+    #     "column_map": {
+    #         "PersonID": "group_id",
+    #         "Name": "name",
+    #         "CreatedAt": "created_at",
+    #         "UpdatedAt": "updated_at",
+    #     },
+    # },
+
     "address": {
         "target_table": "dbo.PCO_People_Address",
         "staging_table": "dbo.STAGING_PCO_People_Address",
@@ -644,21 +667,4 @@ TABLE_CONFIGS = {
             "UpdatedAt": "updated_at",
         },
     },
-
-    # Example pattern for another table:
-    #
-    # "groups": {
-    #     "target_table": "dbo.PCO_Groups",
-    #     "staging_table": "dbo.PCO_Groups_Staging",
-    #     "key_columns": ["PersonID"],
-    #     "required_source_keys": [
-    #         "group_id"
-    #     ],
-    #     "column_map": {
-    #         "PersonID": "group_id",
-    #         "Name": "name",
-    #         "CreatedAt": "created_at",
-    #         "UpdatedAt": "updated_at",
-    #     },
-    # },
 }

@@ -8,6 +8,9 @@ from typing import Any
 from dateutil.parser import isoparse
 
 
+# This just contains some functions that were needed by both checkins full and delta and didn't know where else to put it, so put them here
+
+
 BASE_URL = "https://api.planningcenteronline.com/check-ins/v2/"
 DEFAULT_PER_PAGE = 100
 REQUEST_TIMEOUT_SECONDS = 45

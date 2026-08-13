@@ -9,6 +9,7 @@ from typing import Optional
 
 import psutil
 
+# This file has some function that were used for monitoring of memory usage over time to try and estimate Azure Function pricing, not really needed anymore tbh
 
 _128MB = 128 * 1024 * 1024
 _MB = 1024 * 1024

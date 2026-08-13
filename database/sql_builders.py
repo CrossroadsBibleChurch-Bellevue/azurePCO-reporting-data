@@ -1,5 +1,7 @@
 from typing import List
 
+# This file is where the queries are built that will be used to insert and upsert into staging and production tables.
+# Shouldn't need to change anything here when adding new endpoints.
 
 def quote_identifier_part(identifier: str) -> str:
     return f"[{identifier.replace(']', ']]')}]"

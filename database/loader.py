@@ -15,6 +15,14 @@ from database.sql_builders import (
     build_upsert_sql,
 )
 
+# This the loading file, which will do the actual upserting into the database. Currently there is a decent amount of debugger functions that is helpful to have in determining why a table won't be upserted.
+# This file takes in the data to upload, inserts into the staging table, then upserts from staging into the actual table, so that SQL does the upserting process.
+# The SQL queries are created by calling another file, sql_builders, and then getting the query back and using it.
+# After the data is finished being uploaded, then the delta records are updated for people and check_ins, since those are the ones that need it.
+# When adding a new endpoint delta refresh, make sure to go into update_delta_record and follow the structure there
+# Registrations doesn't have a delta refresh process because the API makes it too difficult to do, and groups the easiest way is to just go back 5 events each time.
+# When adding a new endpoint, changes shouldn't be needed in this file, as long as the tables being passed in are in a dictionary, then it should work fine. 
+
 
 def log_fast_executemany_environment(
     conn: pyodbc.Connection,
@@ -267,6 +275,17 @@ def build_rows(
         rows.append(tuple(row_values))
 
     return rows
+
+
+def iter_table_chunks(
+    table_name: str,
+    records: Any,
+    batch_size: int = 5000,
+):
+    normalized_records = normalize_records(records)
+
+    for start in range(0, len(normalized_records), batch_size):
+        yield {table_name: normalized_records[start:start + batch_size]}
 
 
 def chunk_rows(rows: List[tuple], chunk_size: int):
@@ -738,33 +757,48 @@ def update_delta_record(conn: pyodbc.Connection, endpoint):
     conn.commit()
 
 
-def uploader(tables: Dict[str, Any], endpoint) -> None:
-    if not isinstance(tables, dict):
-        raise TypeError("tables must be a dictionary like {'people_core': records}.")
-
+def uploader_from_stream(table_batches, endpoint) -> None:
     conn = None
     group_name = None
 
     try:
         conn = get_connection()
 
-        for table_name in list(tables):
-            rows = tables.pop(table_name)
+        for batch_index, table_batch in enumerate(table_batches, start=1):
+            if not isinstance(table_batch, dict):
+                raise TypeError("table batches must be dictionaries like {'people_core': records}.")
 
-            try:
-                process_table(
-                    conn=conn,
-                    table_name=table_name,
-                    raw_records=rows,
-                    group_name=group_name
-                )
-            finally:
-                rows.clear()
-                del rows
+            logging.info("Starting stream batch %d with %d table(s).", batch_index, len(table_batch))
+
+            for table_name in list(table_batch):
+                rows = table_batch.pop(table_name)
+                logging.info("Processing stream batch %d -> table '%s' with %d rows.", batch_index, table_name, len(rows))
+
+                try:
+                    process_table(
+                        conn=conn,
+                        table_name=table_name,
+                        raw_records=rows,
+                        group_name=group_name,
+                    )
+                    logging.info("Finished stream batch %d -> table '%s'.", batch_index, table_name)
+                finally:
+                    if rows is not None:
+                        rows.clear()
+                        del rows
+
+            logging.info("Completed stream batch %d.", batch_index)
 
         update_delta_record(conn, endpoint)
 
     finally:
-        
         if conn is not None:
             conn.close()
+
+
+def uploader(tables: Dict[str, Any], endpoint) -> None:
+    if not isinstance(tables, dict):
+        raise TypeError("tables must be a dictionary like {'people_core': records}.")
+
+    uploader_from_stream([dict(tables)], endpoint)
+    tables.clear()

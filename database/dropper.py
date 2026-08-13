@@ -7,6 +7,9 @@ from database import get_connection
 
 load_dotenv()
 
+# This file is used to drop all tables with a given prefix, if that would ever need to happen, whether schema changes or the like
+# Just change the prefix at the bottom of the file to the appropriate prefix, and then run it.
+
 
 SQL_COPT_SS_ACCESS_TOKEN = 1256
 TOKEN_SCOPE = "https://database.windows.net/.default"

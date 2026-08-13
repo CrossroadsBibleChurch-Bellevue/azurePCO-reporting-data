@@ -1,7 +1,9 @@
 from typing import Any
 from collections import defaultdict
 
-from utils.check_ins_shared import Config, attrs, rel_id, resource_date, safe_int, date_in_range
+from extractors.fetchers.check_ins_shared import Config, attrs, rel_id, resource_date, safe_int, date_in_range
+
+# This file is used by both Check-Ins extractors to take the raw data and then parse into rows that can be uploaded into the Database.
 
 def build_checkin_event_rows(
     events: list[dict[str, Any]],

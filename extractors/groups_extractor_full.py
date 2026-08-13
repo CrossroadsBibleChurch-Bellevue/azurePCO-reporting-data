@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# To do on Tuesday, hook up this whole system to Azure function, so that it works as it should and is continuously updating data
-# Need to also implement logic for left at date
-
 import sys
 import time
 from collections import defaultdict
@@ -10,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import logging
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 
 from utils.env_fetcher import get_auth_from_env, max_event_pages
@@ -18,6 +15,11 @@ from utils.time_functions import parse_pco_datetime, convert_output_datetimes_to
 from extractors.fetchers.group_fetchers import fetch_all_tags, fetch_events, fetch_group_tags, fetch_group_types, fetch_groups, fetch_memberships_for_group, fetch_tag_groups, fetch_attendance_for_events, PlanningCenterClient
 from extractors.builders.group_builders import build_all_attendance_table_rows, build_event_instances_table_rows, build_events_table_rows, build_group_members_table_rows, build_group_memberships_table_rows, build_group_overview_table_rows, build_group_tags_table_rows, build_group_types_table_rows, build_output, build_tag_groups_table_rows, build_tags_table_rows
 from database.prepper import wake_up_server
+
+
+# Full extractor for groups, fetchs all groups, including archived, then current members for groups, events for group, attendances, etc.
+# Because of the size of data (Over 200,000 rows for attendances), a batch iterator is used to get chunks of data, upsert, then clear memory to save memory so the Azure Function doesn't end
+
 
 
 def classify_and_limit_events(
@@ -102,135 +104,168 @@ def classify_and_limit_events(
     )
 
 
-def extraction() -> Dict[str, List[Dict[str, Any]]]:
-    t0 = time.perf_counter()
+def iter_row_chunks(rows: Iterable[Dict[str, Any]], batch_size: int = 5000) -> Iterator[List[Dict[str, Any]]]:
+    batch: List[Dict[str, Any]] = []
+    chunk_number = 0
 
-    app_id, secret = get_auth_from_env()
+    for row in rows:
+        batch.append(row)
 
-    if not app_id or not secret:
-        logging.info(
-            "Missing credentials. Set PCO_APP_ID and PCO_SECRET environment variables.",
-            file=sys.stderr,
+        if len(batch) >= batch_size:
+            chunk_number += 1
+            logging.info("Yielding row chunk %d with %d records.", chunk_number, len(batch))
+            yield batch
+            batch = []
+
+    if batch:
+        chunk_number += 1
+        logging.info("Yielding final row chunk %d with %d records.", chunk_number, len(batch))
+        yield batch
+
+
+def iter_extraction_chunks(
+    *,
+    group_types: Optional[List[Dict[str, Any]]] = None,
+    groups: Optional[List[Dict[str, Any]]] = None,
+    memberships_by_group: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    events: Optional[List[Dict[str, Any]]] = None,
+    attendance_by_event: Optional[Dict[str, Dict[str, Any]]] = None,
+    tag_groups: Optional[List[Dict[str, Any]]] = None,
+    tags: Optional[List[Dict[str, Any]]] = None,
+    group_tags: Optional[List[Dict[str, Any]]] = None,
+    batch_size: int = 5000,
+) -> Iterator[Dict[str, List[Dict[str, Any]]]]:
+    if group_types is None or groups is None or memberships_by_group is None or events is None or attendance_by_event is None:
+        app_id, secret = get_auth_from_env()
+
+        if not app_id or not secret:
+            logging.info(
+                "Missing credentials. Set PCO_APP_ID and PCO_SECRET environment variables.",
+                file=sys.stderr,
+            )
+            return
+
+        workers = 8
+        client = PlanningCenterClient(app_id=app_id, secret=secret)
+
+        logging.info("Fetching group types...")
+        group_types = fetch_group_types(client)
+
+        logging.info(f"Fetched {len(group_types)} group types.")
+
+        logging.info("Fetching groups...")
+        groups = fetch_groups(client, include_archived=True)
+
+        group_ids = {group["id"] for group in groups}
+
+        logging.info("Fetching tag groups...")
+        tag_groups = fetch_tag_groups(client)
+
+        logging.info(f"Fetched {len(tag_groups)} tag groups.")
+
+        logging.info("Fetching tags...")
+        tags = fetch_all_tags(
+            client=client,
+            tag_groups=tag_groups,
+            workers=workers,
         )
-        return 2
 
-    workers = 8
-    client = PlanningCenterClient(app_id=app_id, secret=secret)
+        logging.info(f"Fetched {len(tags)} tags.")
 
-    logging.info("Fetching group types...")
-    group_types = fetch_group_types(client)
+        logging.info("Fetching group tags...")
+        group_tags = fetch_group_tags(
+            client=client,
+            groups=groups,
+            workers=workers,
+        )
 
-    logging.info(f"Fetched {len(group_types)} group types.")
+        logging.info(f"Fetched {len(group_tags)} group-tag relationships.")
 
-    logging.info("Fetching groups...")
-    groups = fetch_groups(client, include_archived=True)
+        wake_up_server()
+        logging.info("Fetching events...")
+        all_events = fetch_events(client, max_event_pages=max_event_pages)
+        all_events = [event for event in all_events if event.get("group_id") in group_ids]
 
-    group_ids = {group["id"] for group in groups}
+        events = classify_and_limit_events(
+            events=all_events,
+            mode="all",
+            past_limit=None,
+            future_limit=None,
+        )
 
-    logging.info("Fetching tag groups...")
-    tag_groups = fetch_tag_groups(client)
+        wake_up_server()
+        memberships_by_group = {}
 
-    logging.info(f"Fetched {len(tag_groups)} tag groups.")
+        logging.info("Fetching memberships...")
 
-    logging.info("Fetching tags...")
-    tags = fetch_all_tags(
-        client=client,
-        tag_groups=tag_groups,
-        workers=workers,
-    )
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_map = {
+                executor.submit(fetch_memberships_for_group, client, group["id"]): group["id"]
+                for group in groups
+            }
 
-    logging.info(f"Fetched {len(tags)} tags.")
+            for future in as_completed(future_map):
+                group_id = future_map[future]
 
-    logging.info("Fetching group tags...")
-    group_tags = fetch_group_tags(
-        client=client,
-        groups=groups,
-        workers=workers,
-    )
+                try:
+                    memberships_by_group[group_id] = future.result()
+                except Exception as exc:
+                    logging.info(f"Membership fetch failed for group_id={group_id}: {exc}", file=sys.stderr)
+                    memberships_by_group[group_id] = []
 
-    logging.info(f"Fetched {len(group_tags)} group-tag relationships.")
+        wake_up_server()
+        logging.info("Fetching attendance records...")
 
-    wake_up_server()
-    logging.info("Fetching events...")
-    all_events = fetch_events(client, max_event_pages=max_event_pages)
-    all_events = [event for event in all_events if event.get("group_id") in group_ids]
-
-    selected_events = classify_and_limit_events(
-        events=all_events,
-        mode="all",
-        past_limit=None,
-        future_limit=None,
-    )
-
-    wake_up_server()
-    memberships_by_group: Dict[str, List[Dict[str, Any]]] = {}
-
-    logging.info("Fetching memberships...")
-
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        future_map = {
-            executor.submit(fetch_memberships_for_group, client, group["id"]): group["id"]
-            for group in groups
-        }
-
-        for future in as_completed(future_map):
-            group_id = future_map[future]
-
-            try:
-                memberships_by_group[group_id] = future.result()
-            except Exception as exc:
-                logging.info(f"Membership fetch failed for group_id={group_id}: {exc}", file=sys.stderr)
-                memberships_by_group[group_id] = []
-
-    attendance_by_event: Dict[str, Dict[str, Any]] = {}
-
-    wake_up_server()
-    logging.info("Fetching attendance records...")
-
-    attendance_by_event = fetch_attendance_for_events(
-        client=client,
-        events=selected_events,
-        workers=workers,
-    )
+        attendance_by_event = fetch_attendance_for_events(
+            client=client,
+            events=events,
+            workers=workers,
+        )
 
     output = build_output(
         groups=groups,
         group_types=group_types,
         memberships_by_group=memberships_by_group,
-        events=selected_events,
+        events=events,
         attendance_by_event=attendance_by_event,
     )
 
     convert_output_datetimes_to_local_sql(output)
 
-    group_type_rows = build_group_types_table_rows(output)
-    group_overview_rows = build_group_overview_table_rows(output)
-    group_members_rows = build_group_members_table_rows(output)
-    group_membership_rows = build_group_memberships_table_rows(output)
-    all_attendance_rows = build_all_attendance_table_rows(output)
-    event_instances_rows = build_event_instances_table_rows(selected_events)
-    events_rows = build_events_table_rows(selected_events)
-    tag_groups_rows = build_tag_groups_table_rows(tag_groups)
-    tags_rows = build_tags_table_rows(tags)
-    group_tags_rows = build_group_tags_table_rows(group_tags)
-
-    logging.info("Done.")
-    
-    t1 = time.perf_counter()
-    logging.info(f"Total time taken: {t1 - t0:.2f}" )
-
-    return {
-        "group_overview": list(group_overview_rows),
-        "group_types": list(group_type_rows),
-        "group_tags": list(group_tags_rows),
-        "tags": list(tags_rows),
-        "tag_groups": list(tag_groups_rows),
-        "events": list(events_rows),
-        "event_instances": list(event_instances_rows),
-        "event_attendances": list(all_attendance_rows),
-        "group_members": list(group_members_rows),
-        "group_members_history": list(group_membership_rows),
+    table_rows = {
+        "group_overview": build_group_overview_table_rows(output),
+        "group_types": build_group_types_table_rows(output),
+        "group_tags": build_group_tags_table_rows(group_tags or []),
+        "tags": build_tags_table_rows(tags or []),
+        "tag_groups": build_tag_groups_table_rows(tag_groups or []),
+        "events": build_events_table_rows(events),
+        "event_instances": build_event_instances_table_rows(events),
+        "event_attendances": build_all_attendance_table_rows(output),
+        "group_members": build_group_members_table_rows(output),
+        "group_members_history": build_group_memberships_table_rows(output),
     }
+
+    for table_name, rows in table_rows.items():
+        logging.info("Preparing %s table chunks (batch_size=%d).", table_name, batch_size)
+        for chunk in iter_row_chunks(rows, batch_size=batch_size):
+            logging.info("Emitting %s chunk with %d rows for upload.", table_name, len(chunk))
+            yield {table_name: chunk}
+
+
+def extraction() -> Dict[str, List[Dict[str, Any]]]:
+    t0 = time.perf_counter()
+
+    collected: Dict[str, List[Dict[str, Any]]] = {}
+
+    for batch in iter_extraction_chunks(batch_size=5000):
+        for table_name, rows in batch.items():
+            collected.setdefault(table_name, [])
+            collected[table_name].extend(rows)
+
+    t1 = time.perf_counter()
+    logging.info(f"Total time taken: {t1 - t0:.2f}")
+
+    return collected
 
 
 def main():

@@ -1,3 +1,6 @@
+So this long file contains all of the necessary and needed queries that I used to create tables and some indexes in the SQL database. Just add to here when you create and use new queries just in case you need them again.
+
+
 CREATE TABLE dbo.records
 (
     Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,

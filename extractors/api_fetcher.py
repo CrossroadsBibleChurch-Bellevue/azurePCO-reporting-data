@@ -7,8 +7,9 @@ from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 from utils.env_fetcher import PCO_BASE_URL
 
-# This file contains various functions that are used by the PCO API fetchers and Dataverse uploaders. They are in this file so that this Azure Function is more modular and other API fetchers can in theory
-# be implemented more easily. Also it makes the code more readable in general and not as long lol
+# This file contains various functions that are used by the PCO API fetchers and Dataverse uploaders. This is used by both people extractors as well as calendar extractor.
+# Uses a token bucket to limit amount of data received over time so rate limits aren't hit. I stopped using it because I'd rather hit rate limits since there's no penalty
+# Also multithreaded fetcher
 
 
 # API rate limiter, using a token bucket (whatever that means lol)

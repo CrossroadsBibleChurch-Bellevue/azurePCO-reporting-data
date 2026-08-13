@@ -2,6 +2,11 @@ import pyodbc
 
 from database.database import get_connection
 
+
+# This is the file that fetches the delta records for use in delta refresh.
+# When adding future endpoints that are a delta refresh, just add a record into the SQL records table, then make sure in loader there is a query to update the record in the SQL and add a function here to get it from SQL for the extractor.
+
+
 def fetch_updated_at_people():
     conn = None
 

@@ -19,27 +19,30 @@ from orchestrators.registrations_orchestrator_full import main as registrations_
 # When the extractions occur is set by the app timer trigger schedule. It is in NCRON format, which can be read easily online.
 # I use https://ncrontab.swimburger.net/, which shows the next times they will occur, and also can be used to find ideal schedules.
 # For each endpoint the general structure used is the following. An orchestrator that these functions call, which then calls the extractor that actually gets the data, then pushes it to the uploader to then get upsert into the database.
+# Also make sure if adding any environmental variables to add those in the Azure Function and if adding imports add those imports into requirements.txt
+
+# 08/13/2026 v2
 
 app = func.FunctionApp()
 
 
-@app.timer_trigger(schedule="0 0 19 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 0 5 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def deep_data_extraction1(myTimer: func.TimerRequest) -> None:
     #extractor_calendar(client)
     deep_extractor_people()
 
-@app.timer_trigger(schedule="0 20 19 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 45 5 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def deep_data_extraction2(myTimer: func.TimerRequest) -> None:
     groups_full_refresh()
 
-@app.timer_trigger(schedule="0 20 20 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 45 7 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def deep_data_extraction3(myTimer: func.TimerRequest) -> None:
     checkins_full()
 
-@app.timer_trigger(schedule="0 30 22 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 15 5 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def registrations_extraction(myTimer: func.TimerRequest) -> None:
     registrations_full()

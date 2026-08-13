@@ -7,6 +7,11 @@ from azure.identity import DefaultAzureCredential
 
 load_dotenv()
 
+
+# This file is how the function connects to the database, just gets the appropriate server and database string from the environmental variables then connects and returns the connection
+# Shouldn't need to change anything here when adding new endpoints since the loader already fetches it fine.
+
+
 SQL_COPT_SS_ACCESS_TOKEN = 1256
 TOKEN_SCOPE = "https://database.windows.net/.default"
 

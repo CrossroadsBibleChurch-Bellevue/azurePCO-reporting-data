@@ -9,7 +9,8 @@ from orchestrators.registrations_orchestrator_full import main as register_full
 #from extractors.groups_extractor_delta import extraction as table_fetch
 #from extractors.registrations_extractor_full import extraction as registration_fetch
 
-
+# So this is the tester file I would always use when trying to implement something for the first time when adding a new endpoint. I would first call just the extractor then using the for loop print out some sample rows from it to make sure it came out ok.
+# Then after that, I would use the orchestrator to see if it upserted properly. Finally, I would run it with the function app locally before pushing to Azure.
 
 #update = fetch_updated_at()
 

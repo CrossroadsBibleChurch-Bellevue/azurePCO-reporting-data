@@ -16,6 +16,11 @@ from extractors.fetchers.calendar_fetchers import fetch_event_instances_next_7_d
 from extractors.cache_stashers.calendar_cache_builders import enrich_requests, fetch_answers_cache, build_resource_questions_cache, build_rooms_cache
 
 
+# Very big file that fetches data, organizes it and then preps it to be uploaded.
+# Currently created for dataverse uploading, so uses that format with primary keys being weird with the cr548_ or whatever it may be
+# So need to change that when using SQL
+
+
 # Big function that goes through the data and builds tables that will be used in dataverse
 def build_relational_tables(
     payload: Dict[str, Any],

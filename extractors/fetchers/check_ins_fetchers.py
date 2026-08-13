@@ -1,7 +1,11 @@
 from typing import Any
 
 from utils.time_functions import format_api_datetime
-from utils.check_ins_shared import PCOClient, Config
+from extractors.fetchers.check_ins_shared import PCOClient, Config
+
+
+# Similar to checkIns shared except that it is for all the functions that fetch data
+
 
 def fetch_events(client: PCOClient, config: Config) -> list[dict[str, Any]]:
     if config.event_id:

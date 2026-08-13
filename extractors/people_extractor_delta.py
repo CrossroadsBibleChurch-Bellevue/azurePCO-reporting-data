@@ -12,6 +12,10 @@ from utils.datatable_helpers import build_tables
 from database.fetch_record import fetch_updated_at_people
 
 
+# Delta extractor for people, first gets the last delta date time from the server and then orders data by updated_at, then paginates until an updated_at that is older than the previous delta is reached, at which point it stops fetching
+# Then it parses and organizes into tables for upserting
+
+
 updated_at_filter = fetch_updated_at_people()
 
 

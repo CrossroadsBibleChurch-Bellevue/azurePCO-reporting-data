@@ -5,7 +5,7 @@ from collections import defaultdict
 from utils.time_functions import now_utc, parse_pco_datetime
 from utils.hasher import stable_hash_id
 
-
+# This file is used by both groups extractors to take the raw data from the API and then parse and turn into rows/tables that can be used by the loader to input data into the database.
 
 def build_output(
     groups: List[Dict[str, Any]],

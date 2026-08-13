@@ -1,6 +1,5 @@
 This folder is where a lot of the action happens. This is how the functions connect to the database, upsert data, queries built, tables configured, and such.
 
-Converters.py is used to convert (wow surprising) various datetimes into SQL compatible datetimes. This is mainly used by the check-ins.
 Database.py is used to actually connect to the database. When testing locally, it uses your Azure credentials, when running in Azure Function, it uses its credentials. Server and database to connect to are configured in environmental variables.
 Dropper.py is used to drop tables quickly if need be, can be faster then using SQL queries if one is need to drop a lot of tables.
 Fetch_record.py is used to get data from the database, mainly the date and times of the last delta records, so that a true delta happens.

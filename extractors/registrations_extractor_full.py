@@ -17,9 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
-from tabulate import tabulate
 from urllib3.util.retry import Retry
-from tqdm import tqdm
 
 from utils.time_functions import convert_output_datetimes_to_local_sql
 from utils.hasher import stable_hash_id
@@ -682,285 +680,269 @@ class RegistrationsTester:
         signup_count = len(signups)
         requests_per_signup = 5
 
-        with tqdm(
-            total=signup_count * requests_per_signup,
-            desc="Fetching PCO registrations",
-            unit="request",
-            ncols=200,
-        ) as progress_bar:
 
-            for signup_number, signup in enumerate(signups, start=1):
-                signup_id = str(signup["id"])
-                signup_name = get_resource_attributes(signup).get("name")
 
-                progress_bar.set_postfix_str(
-                    f"signup {signup_number:,}/{signup_count:,} | "
-                    f"{signup_name or signup_id}"
-                )
+        for signup_number, signup in enumerate(signups, start=1):
+            signup_id = str(signup["id"])
+            signup_name = get_resource_attributes(signup).get("name")
 
-                self.build_signup_row(signup)
-                self.build_signup_related_resource_rows(signup)
 
-                endpoint_requests: dict[
-                    str,
-                    tuple[str, dict[str, Any] | None],
-                ] = {
-                    "categories": (
-                        f"signups/{signup_id}/categories",
-                        None,
-                    ),
-                    "selection_types": (
-                        f"signups/{signup_id}/selection_types",
-                        {
-                            "fields[SelectionType]": (
-                                "at_maximum_capacity,"
-                                "available_capacity,"
-                                "created_at,"
-                                "maximum_capacity,"
-                                "name,"
-                                "price_cents,"
-                                "price_currency,"
-                                "price_currency_symbol,"
-                                "price_formatted,"
-                                "publicly_available,"
-                                "updated_at,"
-                                "waitlist"
-                            )
-                        },
-                    ),
-                    "registrations": (
-                        f"signups/{signup_id}/registrations",
-                        {
-                            "include": (
-                                "created_by,registrant_contact"
-                            ),
-                        },
-                    ),
-                    "attendees": (
-                        f"signups/{signup_id}/attendees",
-                        {
-                            "include": (
-                                "person,"
-                                "registration,"
-                                "selection_type,"
-                                "emergency_contact"
-                            ),
-                            "fields[Attendee]": (
-                                "active,"
-                                "canceled,"
-                                "complete,"
-                                "created_at,"
-                                "name,"
-                                "updated_at,"
-                                "waitlisted,"
-                                "waitlisted_at,"
-                                "person,"
-                                "registration,"
-                                "selection_type,"
-                                "emergency_contact"
-                            ),
-                            "fields[Person]": (
-                                "first_name,"
-                                "last_name,"
-                                "name"
-                            ),
-                            "fields[SelectionType]": (
-                                "at_maximum_capacity,"
-                                "available_capacity,"
-                                "created_at,"
-                                "maximum_capacity,"
-                                "name,"
-                                "price_cents,"
-                                "price_currency,"
-                                "price_currency_symbol,"
-                                "price_formatted,"
-                                "publicly_available,"
-                                "updated_at,"
-                                "waitlist"
-                            ),
-                        },
-                    ),
-                    "signup_times": (
-                        f"signups/{signup_id}/signup_times",
-                        {
-                            "fields[SignupTime]": (
-                                "all_day,"
-                                "created_at,"
-                                "ends_at,"
-                                "starts_at,"
-                                "updated_at"
-                            ),
-                        },
-                    ),
-                }
+            self.build_signup_row(signup)
+            self.build_signup_related_resource_rows(signup)
 
-                endpoint_results: dict[
-                    str,
-                    tuple[
-                        list[dict[str, Any]],
-                        list[dict[str, Any]],
-                    ],
-                ] = {}
-
-                optional_not_found_requests = {
-                    "signup_times",
-                }
-
-                with ThreadPoolExecutor(
-                    max_workers=MAX_API_WORKERS,
-                    thread_name_prefix=f"pco-signup-{signup_id}",
-                ) as executor:
-                    future_to_name = {
-                        executor.submit(
-                            self.client.get_all_pages,
-                            endpoint,
-                            params,
-                            request_name in optional_not_found_requests,
-                        ): request_name
-                        for request_name, (
-                            endpoint,
-                            params,
-                        ) in endpoint_requests.items()
-                    }
-
-                    for future in as_completed(future_to_name):
-                        request_name = future_to_name[future]
-
-                        try:
-                            endpoint_results[request_name] = (
-                                future.result()
-                            )
-                        except Exception as error:
-                            raise RuntimeError(
-                                "Failed fetching "
-                                f"{request_name} for signup "
-                                f"{signup_id} ({signup_name})"
-                            ) from error
-
-                        resource_count = len(endpoint_results[request_name][0])
-
-                        progress_bar.set_postfix_str(
-                            f"signup {signup_number:,}/{signup_count:,} | "
-                            f"{request_name}: {resource_count:,} resources"
+            endpoint_requests: dict[
+                str,
+                tuple[str, dict[str, Any] | None],
+            ] = {
+                "categories": (
+                    f"signups/{signup_id}/categories",
+                    None,
+                ),
+                "selection_types": (
+                    f"signups/{signup_id}/selection_types",
+                    {
+                        "fields[SelectionType]": (
+                            "at_maximum_capacity,"
+                            "available_capacity,"
+                            "created_at,"
+                            "maximum_capacity,"
+                            "name,"
+                            "price_cents,"
+                            "price_currency,"
+                            "price_currency_symbol,"
+                            "price_formatted,"
+                            "publicly_available,"
+                            "updated_at,"
+                            "waitlist"
                         )
-                        progress_bar.update(1)
+                    },
+                ),
+                "registrations": (
+                    f"signups/{signup_id}/registrations",
+                    {
+                        "include": (
+                            "created_by,registrant_contact"
+                        ),
+                    },
+                ),
+                "attendees": (
+                    f"signups/{signup_id}/attendees",
+                    {
+                        "include": (
+                            "person,"
+                            "registration,"
+                            "selection_type,"
+                            "emergency_contact"
+                        ),
+                        "fields[Attendee]": (
+                            "active,"
+                            "canceled,"
+                            "complete,"
+                            "created_at,"
+                            "name,"
+                            "updated_at,"
+                            "waitlisted,"
+                            "waitlisted_at,"
+                            "person,"
+                            "registration,"
+                            "selection_type,"
+                            "emergency_contact"
+                        ),
+                        "fields[Person]": (
+                            "first_name,"
+                            "last_name,"
+                            "name"
+                        ),
+                        "fields[SelectionType]": (
+                            "at_maximum_capacity,"
+                            "available_capacity,"
+                            "created_at,"
+                            "maximum_capacity,"
+                            "name,"
+                            "price_cents,"
+                            "price_currency,"
+                            "price_currency_symbol,"
+                            "price_formatted,"
+                            "publicly_available,"
+                            "updated_at,"
+                            "waitlist"
+                        ),
+                    },
+                ),
+                "signup_times": (
+                    f"signups/{signup_id}/signup_times",
+                    {
+                        "fields[SignupTime]": (
+                            "all_day,"
+                            "created_at,"
+                            "ends_at,"
+                            "starts_at,"
+                            "updated_at"
+                        ),
+                    },
+                ),
+            }
 
-                categories, category_included = (
-                    endpoint_results["categories"]
+            endpoint_results: dict[
+                str,
+                tuple[
+                    list[dict[str, Any]],
+                    list[dict[str, Any]],
+                ],
+            ] = {}
+
+            optional_not_found_requests = {
+                "signup_times",
+            }
+
+            with ThreadPoolExecutor(
+                max_workers=MAX_API_WORKERS,
+                thread_name_prefix=f"pco-signup-{signup_id}",
+            ) as executor:
+                future_to_name = {
+                    executor.submit(
+                        self.client.get_all_pages,
+                        endpoint,
+                        params,
+                        request_name in optional_not_found_requests,
+                    ): request_name
+                    for request_name, (
+                        endpoint,
+                        params,
+                    ) in endpoint_requests.items()
+                }
+
+                for future in as_completed(future_to_name):
+                    request_name = future_to_name[future]
+
+                    try:
+                        endpoint_results[request_name] = (
+                            future.result()
+                        )
+                    except Exception as error:
+                        raise RuntimeError(
+                            "Failed fetching "
+                            f"{request_name} for signup "
+                            f"{signup_id} ({signup_name})"
+                        ) from error
+
+
+            categories, category_included = (
+                endpoint_results["categories"]
+            )
+            selection_types, selection_type_included = (
+                endpoint_results["selection_types"]
+            )
+            registrations, registration_included = (
+                endpoint_results["registrations"]
+            )
+            attendees, attendee_included = (
+                endpoint_results["attendees"]
+            )
+
+            signup_times, signup_time_included = (
+                endpoint_results["signup_times"]
+            )
+
+            # Add every fetched resource before building rows. This ensures
+            # resource lookups work regardless of which request completed first.
+            self.add_resources(categories)
+            self.add_resources(category_included)
+
+            self.add_resources(selection_types)
+            self.add_resources(selection_type_included)
+
+            self.add_resources(registrations)
+            self.add_resources(registration_included)
+
+            self.add_resources(attendees)
+            self.add_resources(attendee_included)
+
+            self.add_resources(signup_times)
+            self.add_resources(signup_time_included)
+
+            for category in categories:
+                self.build_category_row(category)
+                self.build_signup_category_row(
+                    signup_id=signup_id,
+                    category_id=str(category["id"]),
                 )
-                selection_types, selection_type_included = (
-                    endpoint_results["selection_types"]
-                )
-                registrations, registration_included = (
-                    endpoint_results["registrations"]
-                )
-                attendees, attendee_included = (
-                    endpoint_results["attendees"]
+
+            for selection_type in selection_types:
+                self.build_selection_type_row(
+                    selection_type=selection_type,
+                    signup_id=signup_id,
                 )
 
-                signup_times, signup_time_included = (
-                    endpoint_results["signup_times"]
+            for registration in registrations:
+                self.build_registration_row(
+                    registration=registration,
+                    signup_id=signup_id,
+                )
+                self.build_registering_party_row(
+                    registration=registration,
+                    signup_id=signup_id,
                 )
 
-                # Add every fetched resource before building rows. This ensures
-                # resource lookups work regardless of which request completed first.
-                self.add_resources(categories)
-                self.add_resources(category_included)
+            for attendee in attendees:
+                self.build_named_attendee_row(
+                    attendee=attendee,
+                    signup_id=signup_id,
+                )
+                self.build_attendee_selection_row(
+                    attendee=attendee,
+                    signup_id=signup_id,
+                )
 
-                self.add_resources(selection_types)
-                self.add_resources(selection_type_included)
+                registration_id = relationship_id(
+                    attendee,
+                    "registration",
+                )
+                included_registration = self.find_resource(
+                    "Registration",
+                    registration_id,
+                )
 
-                self.add_resources(registrations)
-                self.add_resources(registration_included)
-
-                self.add_resources(attendees)
-                self.add_resources(attendee_included)
-
-                self.add_resources(signup_times)
-                self.add_resources(signup_time_included)
-
-                for category in categories:
-                    self.build_category_row(category)
-                    self.build_signup_category_row(
-                        signup_id=signup_id,
-                        category_id=str(category["id"]),
-                    )
-
-                for selection_type in selection_types:
-                    self.build_selection_type_row(
-                        selection_type=selection_type,
-                        signup_id=signup_id,
-                    )
-
-                for registration in registrations:
+                if included_registration:
                     self.build_registration_row(
-                        registration=registration,
+                        registration=included_registration,
                         signup_id=signup_id,
                     )
                     self.build_registering_party_row(
-                        registration=registration,
+                        registration=included_registration,
                         signup_id=signup_id,
                     )
 
-                for attendee in attendees:
-                    self.build_named_attendee_row(
-                        attendee=attendee,
-                        signup_id=signup_id,
-                    )
-                    self.build_attendee_selection_row(
-                        attendee=attendee,
-                        signup_id=signup_id,
-                    )
-
-                    registration_id = relationship_id(
-                        attendee,
-                        "registration",
-                    )
-                    included_registration = self.find_resource(
-                        "Registration",
-                        registration_id,
-                    )
-
-                    if included_registration:
-                        self.build_registration_row(
-                            registration=included_registration,
-                            signup_id=signup_id,
-                        )
-                        self.build_registering_party_row(
-                            registration=included_registration,
-                            signup_id=signup_id,
-                        )
-
-                    selection_type_id = relationship_id(
-                        attendee,
-                        "selection_type",
-                    )
-                    included_selection_type = self.find_resource(
-                        "SelectionType",
-                        selection_type_id,
-                    )
-
-                    if included_selection_type:
-                        self.build_selection_type_row(
-                            selection_type=included_selection_type,
-                            signup_id=signup_id,
-                        )
-
-                next_signup_time_id = relationship_id(
-                    signup,
-                    "next_signup_time",
+                selection_type_id = relationship_id(
+                    attendee,
+                    "selection_type",
+                )
+                included_selection_type = self.find_resource(
+                    "SelectionType",
+                    selection_type_id,
                 )
 
-                for signup_time in signup_times:
-                    signup_time_id = str(signup_time["id"])
-
-                    self.build_signup_time_row(
-                        signup_time=signup_time,
+                if included_selection_type:
+                    self.build_selection_type_row(
+                        selection_type=included_selection_type,
                         signup_id=signup_id,
-                        is_next_signup_time=(
-                            signup_time_id == next_signup_time_id
-                        ),
                     )
+
+            next_signup_time_id = relationship_id(
+                signup,
+                "next_signup_time",
+            )
+
+            for signup_time in signup_times:
+                signup_time_id = str(signup_time["id"])
+
+                self.build_signup_time_row(
+                    signup_time=signup_time,
+                    signup_id=signup_id,
+                    is_next_signup_time=(
+                        signup_time_id == next_signup_time_id
+                    ),
+                )
 
         self.sort_tables()
         return self.tables
@@ -1371,136 +1353,6 @@ class RegistrationsTester:
             )
 
 
-def write_csv_table(
-    output_path: Path,
-    rows: list[dict[str, Any]],
-) -> None:
-    if not rows:
-        output_path.write_text("", encoding="utf-8")
-        return
-
-    columns: list[str] = []
-    seen_columns: set[str] = set()
-
-    for row in rows:
-        for column in row:
-            if column not in seen_columns:
-                seen_columns.add(column)
-                columns.append(column)
-
-    with output_path.open(
-        "w",
-        encoding="utf-8-sig",
-        newline="",
-    ) as csv_file:
-        writer = csv.DictWriter(
-            csv_file,
-            fieldnames=columns,
-            extrasaction="ignore",
-        )
-        writer.writeheader()
-
-        for row in rows:
-            writer.writerow(
-                {
-                    column: clean_csv_value(row.get(column))
-                    for column in columns
-                }
-            )
-
-
-def write_outputs(
-    tables: dict[str, list[dict[str, Any]]],
-) -> None:
-    OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
-
-    combined_output_path = OUTPUT_DIRECTORY / "registrations_data.json"
-    combined_output_path.write_text(
-        json.dumps(
-            tables,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    for table_name, rows in tables.items():
-        csv_output_path = OUTPUT_DIRECTORY / f"{table_name}.csv"
-        json_output_path = OUTPUT_DIRECTORY / f"{table_name}.json"
-
-        write_csv_table(csv_output_path, rows)
-
-        json_output_path.write_text(
-            json.dumps(
-                rows,
-                ensure_ascii=False,
-                indent=2,
-                sort_keys=False,
-            ),
-            encoding="utf-8",
-        )
-
-
-def print_table_previews(
-    tables: dict[str, list[dict[str, Any]]],
-) -> None:
-    for table_name in TABLE_ORDER:
-        rows = tables[table_name]
-
-        print("\n" + "=" * 100)
-        print(f"{table_name.upper()} | {len(rows):,} rows")
-        print("=" * 100)
-
-        if not rows:
-            print("No rows returned.")
-            continue
-
-        preview_rows = rows[:TERMINAL_PREVIEW_ROWS]
-
-        print(
-            tabulate(
-                preview_rows,
-                headers="keys",
-                tablefmt="psql",
-                showindex=False,
-                maxcolwidths=35,
-            )
-        )
-
-        if len(rows) > TERMINAL_PREVIEW_ROWS:
-            print(
-                f"\nShowing {TERMINAL_PREVIEW_ROWS:,} "
-                f"of {len(rows):,} rows."
-            )
-
-
-def print_summary(
-    tables: dict[str, list[dict[str, Any]]],
-    elapsed_seconds: float,
-) -> None:
-    summary_rows = [
-        {
-            "table": table_name,
-            "row_count": len(tables[table_name]),
-        }
-        for table_name in TABLE_ORDER
-    ]
-
-    print("\n" + "=" * 60)
-    print("EXPORT SUMMARY")
-    print("=" * 60)
-    print(
-        tabulate(
-            summary_rows,
-            headers="keys",
-            tablefmt="psql",
-            showindex=False,
-        )
-    )
-    print(f"\nElapsed time: {elapsed_seconds:,.2f} seconds")
-    print(f"Output directory: {OUTPUT_DIRECTORY.resolve()}")
-
 
 def load_credentials() -> tuple[str, str]:
     load_dotenv()
@@ -1564,13 +1416,6 @@ def main() -> int:
 
     try:
         tables = extraction()
-
-        write_outputs(tables)
-        print_table_previews(tables)
-
-        elapsed_seconds = time.perf_counter() - start_time
-        print_summary(tables, elapsed_seconds)
-
         return 0
 
     except KeyboardInterrupt:

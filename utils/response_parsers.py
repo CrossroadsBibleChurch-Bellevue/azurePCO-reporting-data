@@ -1,8 +1,7 @@
 from typing import Any, Tuple, Optional, Dict, List
 
 
-# This file contains various functions that are used to parse through the API JSON response. They are in this file so that this Azure Function is more modular and other API fetchers can in theory
-# be implemented more easily. Also it makes the code more readable in general and not as long lol
+# This file contains various functions that are used to parse through the API JSON response. Currently only used by the Calendar and People fetchers
 
 def rel_id(resource: Dict[str, Any], relationship_name: str) -> Optional[str]:
     rel = resource.get("relationships", {}).get(relationship_name, {})
