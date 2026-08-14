@@ -6,8 +6,10 @@ from urllib.parse import urljoin
 import time
 from typing import Any
 from dateutil.parser import isoparse
+import re
+import os
 
-
+from datetime import datetime, date, timezone
 # This just contains some functions that were needed by both checkins full and delta and didn't know where else to put it, so put them here
 
 
@@ -221,3 +223,55 @@ def safe_int(value: Any) -> int:
         return int(value or 0)
     except Exception:
         return 0
+
+def getenv_blank_as_none(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+def parse_bool_env(name: str, default: bool = False) -> bool:
+    value = getenv_blank_as_none(name)
+
+    if value is None:
+        return default
+
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+def parse_date_env(name: str) -> date | None:
+    value = getenv_blank_as_none(name)
+    if not value:
+        return None
+    try:
+        return isoparse(value).date()
+    except Exception as exc:
+        raise ValueError(f"{name} must be ISO date/datetime. Got: {value}") from exc
+
+
+def parse_datetime_env(value: str) -> datetime:
+    if not value:
+        raise ValueError("Missing required datetime value")
+
+    value = value.strip()
+
+    # Python datetime supports microseconds: at most 6 fractional digits.
+    # Example: .8387577 becomes .838757
+    value = re.sub(
+        r"(\.\d{6})\d+",
+        r"\1",
+        value,
+    )
+
+    try:
+        parsed = isoparse(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Must be a valid ISO datetime. Got: {value!r}"
+        ) from exc
+
+    # Treat timezone-less SQL datetime2 values as UTC.
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    return parsed.astimezone(timezone.utc)

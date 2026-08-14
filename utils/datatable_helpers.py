@@ -1,7 +1,6 @@
 from typing import Dict, Any
 from extractors.schemas.people_schemas import build_row_people
 import re
-import sys
 
 
 # This file creates tables for easier use when upserting. Used by calendar and people before better methods were found lol. 

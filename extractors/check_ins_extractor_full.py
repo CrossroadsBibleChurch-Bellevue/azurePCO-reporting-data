@@ -2,26 +2,19 @@
 
 from __future__ import annotations
 
-import os
 import sys
-import time
-from collections import defaultdict
-from dataclasses import dataclass
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import urljoin
 from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
-import requests
-from dateutil.parser import isoparse
 
-from utils.time_functions import convert_output_datetimes_to_local_sql, format_api_datetime
-from extractors.fetchers.check_ins_shared import PCOError, Config, PCOClient, attrs, rel_id
+from utils.time_functions import convert_output_datetimes_to_local_sql
+from extractors.fetchers.check_ins_shared import PCOError, Config, PCOClient, attrs, rel_id, getenv_blank_as_none, parse_date_env
 from extractors.builders.check_ins_builders import build_checkin_event_attendance_rows, build_checkin_event_instance_rows, build_checkin_event_rows, build_event_time_rows, build_headcount_rows
-from extractors.fetchers.check_ins_fetchers import fetch_events, fetch_attendance_types, fetch_event_checkins, fetch_event_periods, fetch_event_time_headcounts, fetch_event_times_delta, fetch_location_event_times
+from extractors.fetchers.check_ins_fetchers import fetch_events, fetch_attendance_types, fetch_event_checkins, fetch_event_periods, fetch_event_time_headcounts, fetch_location_event_times
 
 
 # Same as check-ins extractor delta except fetches everything. Could be cleaned up since some function are reused, just haven't gotten to it.
@@ -29,30 +22,6 @@ from extractors.fetchers.check_ins_fetchers import fetch_events, fetch_attendanc
 
 load_dotenv()
 
-
-def getenv_blank_as_none(name: str) -> str | None:
-    value = os.getenv(name)
-    if value is None:
-        return None
-    value = value.strip()
-    return value or None
-
-def parse_bool_env(name: str, default: bool = False) -> bool:
-    value = getenv_blank_as_none(name)
-
-    if value is None:
-        return default
-
-    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
-
-def parse_date_env(name: str) -> date | None:
-    value = getenv_blank_as_none(name)
-    if not value:
-        return None
-    try:
-        return isoparse(value).date()
-    except Exception as exc:
-        raise ValueError(f"{name} must be ISO date/datetime. Got: {value}") from exc
 
 def load_config() -> Config:
     app_id = getenv_blank_as_none("PCO_APP_ID")

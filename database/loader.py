@@ -1,9 +1,7 @@
 import time
 from typing import Any, Dict, List, Optional,  Tuple
 from datetime import datetime, timezone
-import sys
 import logging
-import re
 
 import pyodbc
 

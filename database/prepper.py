@@ -1,10 +1,5 @@
-import re
 import pyodbc
-import time
-import logging
-from typing import Dict, Any
-from datetime import datetime
-from database.database import get_connection, connection_string, get_access_token, SQL_COPT_SS_ACCESS_TOKEN
+from database.database import connection_string, get_access_token, SQL_COPT_SS_ACCESS_TOKEN
 
 # Pretty simple file, just pings the server to wake it up if its asleep, if awake keeps it awake
 
