@@ -1,7 +1,7 @@
 import azure.functions as func
 
 from orchestrators.calendar_orchestrator import main as extractor_calendar
-from orchestrators.people_orchestrator import main as deep_extractor_people
+from orchestrators.people_orchestrator_full import main as deep_extractor_people
 from orchestrators.people_orchestrator_delta import main as updates_extractor_people
 from orchestrators.groups_orchestrator_full import main as groups_full_refresh
 from orchestrators.groups_orchestrator_delta import main as groups_delta
@@ -21,25 +21,25 @@ from orchestrators.registrations_orchestrator_full import main as registrations_
 # For each endpoint the general structure used is the following. An orchestrator that these functions call, which then calls the extractor that actually gets the data, then pushes it to the uploader to then get upsert into the database.
 # Also make sure if adding any environmental variables to add those in the Azure Function and if adding imports add those imports into requirements.txt
 
-# 08/13/2026 v2
+# 08/17/2026 v3
 
 app = func.FunctionApp()
 
 
 @app.timer_trigger(schedule="0 0 5 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
-def deep_data_extraction1(myTimer: func.TimerRequest) -> None:
+def people_full_extraction(myTimer: func.TimerRequest) -> None:
     #extractor_calendar(client)
     deep_extractor_people()
 
-@app.timer_trigger(schedule="0 45 5 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 10 18 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
-def deep_data_extraction2(myTimer: func.TimerRequest) -> None:
+def groups_full_extraction(myTimer: func.TimerRequest) -> None:
     groups_full_refresh()
 
 @app.timer_trigger(schedule="0 45 7 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
-def deep_data_extraction3(myTimer: func.TimerRequest) -> None:
+def checkins_full_extraction(myTimer: func.TimerRequest) -> None:
     checkins_full()
 
 @app.timer_trigger(schedule="0 15 5 */1 * *", arg_name="myTimer", run_on_startup=False,
@@ -49,7 +49,7 @@ def registrations_extraction(myTimer: func.TimerRequest) -> None:
 
 @app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
-def regular_data_extraction(myTimer: func.TimerRequest) -> None:
+def delta_data_extraction(myTimer: func.TimerRequest) -> None:
     updates_extractor_people()
     groups_delta()
     checkins_delta()

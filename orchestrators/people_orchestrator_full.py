@@ -1,6 +1,6 @@
 import time
 
-from extractors.people_extractor import extraction
+from extractors.people_extractor_full import extraction
 from database.loader import uploader
 
 

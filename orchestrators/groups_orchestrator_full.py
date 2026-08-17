@@ -14,13 +14,24 @@ def main():
     wake_up_server()
 
     try:
-        uploader_from_stream(iter_extraction_chunks(batch_size=5000), "groups")
+        chunk_stream = iter_extraction_chunks(
+            batch_size=4000,
+            group_fetch_size=100,
+            event_fetch_size=250,
+        )
+
+        uploader_from_stream(
+            chunk_stream,
+            "groups",
+        )
     finally:
         wake_up_server()
 
-    t1 = time.perf_counter()
-    print(f"Extract + Upload seconds: {t1 - t0:.2f}")
-    print(f"Total seconds taken: {t1 - t0:.2f}")
+    elapsed = time.perf_counter() - t0
+
+    print(f"Extract + Upload seconds: {elapsed:.2f}")
+    print(f"Total seconds taken: {elapsed:.2f}")
+
 
 if __name__ == "__main__":
     main()

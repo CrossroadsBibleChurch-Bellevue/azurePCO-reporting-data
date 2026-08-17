@@ -120,13 +120,22 @@ def normalize_records(records: Any) -> List[Dict[str, Any]]:
     if isinstance(records, dict):
         return [records]
 
-    if isinstance(records, (list, tuple)):
+    if isinstance(records, list):
         if not all(isinstance(record, dict) for record in records):
             raise TypeError("All records must be dictionaries.")
+
+        return records
+
+    if isinstance(records, tuple):
+        if not all(isinstance(record, dict) for record in records):
+            raise TypeError("All records must be dictionaries.")
+
         return list(records)
 
-    raise TypeError("Records must be a dictionary or a list of dictionaries.")
-
+    raise TypeError(
+        "Records must be a dictionary, list of dictionaries, "
+        "or tuple of dictionaries."
+    )
 
 def get_table_config(table_name: str) -> Dict[str, Any]:
     if table_name not in TABLE_CONFIGS:
@@ -262,6 +271,51 @@ def build_rows(
                     raise ValueError(
                         f"Failed to convert value while building SQL row | "
                         f"RecordIndex={record_index} | "
+                        f"SQLColumn={sql_column} | "
+                        f"SourceKey={source_key} | "
+                        f"PythonType={type(value).__name__} | "
+                        f"Value={value!r}"
+                    ) from error
+
+            row_values.append(value)
+
+        rows.append(tuple(row_values))
+
+    return rows
+
+
+def build_record_batch_rows(
+    records: List[Dict[str, Any]],
+    column_map: Dict[str, str],
+    converters: Optional[Dict[str, Any]] = None,
+    dataset_start_index: int = 0,
+) -> List[Tuple[Any, ...]]:
+    converters = converters or {}
+    rows: List[Tuple[Any, ...]] = []
+
+    for batch_record_index, record in enumerate(records):
+        dataset_record_index = (
+            dataset_start_index + batch_record_index
+        )
+
+        row_values: List[Any] = []
+
+        for sql_column, source_key in column_map.items():
+            value = record.get(source_key)
+            converter = converters.get(sql_column)
+
+            if converter is not None:
+                try:
+                    value = converter(value)
+
+                except (
+                    TypeError,
+                    ValueError,
+                    OverflowError,
+                ) as error:
+                    raise ValueError(
+                        "Failed to convert value while building SQL row | "
+                        f"RecordIndex={dataset_record_index} | "
                         f"SQLColumn={sql_column} | "
                         f"SourceKey={source_key} | "
                         f"PythonType={type(value).__name__} | "
@@ -454,17 +508,13 @@ def load_staging(
     records: List[Dict[str, Any]],
     config: Dict[str, Any],
     group_name: str,
+    truncate_staging: bool = True,
 ) -> int:
     staging_table = config["staging_table"]
     column_map = config["column_map"]
 
     columns = list(column_map.keys())
     source_keys = list(column_map.values())
-    rows = build_rows(
-        records=records,
-        column_map=column_map,
-        converters=config.get("converters"),
-    )
 
     insert_sql = build_staging_insert_sql(
         staging_table=staging_table,
@@ -477,30 +527,65 @@ def load_staging(
     failed_batch_number: Optional[int] = None
     failed_batch_start_index: Optional[int] = None
 
+    loaded_count = 0
 
     try:
-        cursor.execute(build_truncate_sql(staging_table))
+        if truncate_staging:
+            cursor.execute(build_truncate_sql(staging_table))
 
-        if not rows:
+        if not records:
             return 0
 
-        cursor.fast_executemany = config.get("fast_executemany", True)
+        cursor.fast_executemany = config.get(
+            "fast_executemany",
+            True,
+        )
 
         input_sizes = config.get("input_sizes")
+
+        validate_input_sizes(
+            table_name=table_name,
+            columns=columns,
+            input_sizes=input_sizes,
+        )
 
         if input_sizes is not None:
             cursor.setinputsizes(input_sizes)
 
-        batch_size = 10000
+        database_batch_size = config.get(
+            "batch_size",
+            1000,
+        )
 
-        for batch_number, batch in enumerate(
-            chunk_rows(rows, chunk_size=batch_size),
+        if database_batch_size <= 0:
+            raise ValueError(
+                f"batch_size for table '{table_name}' "
+                "must be greater than zero."
+            )
+
+        for batch_number, batch_start_index in enumerate(
+            range(0, len(records), database_batch_size),
             start=1,
         ):
-            batch_start_index = (batch_number - 1) * batch_size
+            record_batch = records[
+                batch_start_index:
+                batch_start_index + database_batch_size
+            ]
+
+            batch = build_record_batch_rows(
+                records=record_batch,
+                column_map=column_map,
+                converters=config.get("converters"),
+                dataset_start_index=batch_start_index,
+            )
 
             try:
-                cursor.executemany(insert_sql, batch)
+                cursor.executemany(
+                    insert_sql,
+                    batch,
+                )
+
+                loaded_count += len(batch)
 
             except pyodbc.Error:
                 failed_batch = batch
@@ -516,11 +601,12 @@ def load_staging(
                 )
 
                 raise
-        
 
-        #cursor.executemany(insert_sql, rows)
+            finally:
+                batch.clear()
+                record_batch.clear()
 
-        return len(rows)
+        return loaded_count
 
     except pyodbc.Error as batch_error:
         logging.exception(
@@ -530,33 +616,83 @@ def load_staging(
             "FailedBatchStartIndex=%s",
             table_name,
             staging_table,
-            len(rows),
+            len(records),
             failed_batch_number,
-            len(failed_batch) if failed_batch is not None else None,
+            (
+                len(failed_batch)
+                if failed_batch is not None
+                else None
+            ),
             failed_batch_start_index,
         )
 
-        for argument_index, argument in enumerate(batch_error.args):
+        for argument_index, argument in enumerate(
+            batch_error.args
+        ):
             logging.error(
                 "Batch pyodbc argument %d: %r",
                 argument_index,
                 argument,
             )
 
-        logging.error("Generated insert SQL:\n%s", insert_sql)
+        logging.error(
+            "Generated insert SQL:\n%s",
+            insert_sql,
+        )
 
         conn.rollback()
 
         raise RuntimeError(
-            f"fast_executemany failed for logical table '{table_name}', "
-            f"staging table '{staging_table}', batch "
-            f"{failed_batch_number}, starting at dataset index "
-            f"{failed_batch_start_index}. Review the preceding "
-            f"COLUMN PROFILE entries."
+            f"fast_executemany failed for logical table "
+            f"'{table_name}', staging table '{staging_table}', "
+            f"batch {failed_batch_number}, starting at dataset "
+            f"index {failed_batch_start_index}. Review the "
+            f"preceding COLUMN PROFILE entries."
         ) from batch_error
 
     finally:
         cursor.close()
+
+
+def stage_group_members_history_chunk(
+    conn: pyodbc.Connection,
+    records: List[Dict[str, Any]],
+) -> int:
+    table_name = "group_members_history"
+
+    config = get_table_config(table_name)
+    validate_table_config(table_name, config)
+
+    normalized_records = normalize_records(records)
+    validate_records(
+        table_name=table_name,
+        records=normalized_records,
+        config=config,
+    )
+
+    if not normalized_records:
+        return 0
+
+    loaded_count = load_staging(
+        conn=conn,
+        table_name=table_name,
+        records=normalized_records,
+        config=config,
+        group_name=None,
+        truncate_staging=False,
+    )
+
+    # Commit each staging chunk so the transaction does not grow
+    # throughout the entire Groups extraction.
+    conn.commit()
+
+    logging.info(
+        "Appended %d group membership history rows to staging.",
+        loaded_count,
+    )
+
+    return loaded_count
+
 
 
 def upsert_from_staging(
@@ -604,12 +740,82 @@ def upsert_from_staging(
 
         raise
 
-def stored_proc(conn: pyodbc.Connection):
+def stored_proc(
+    conn: pyodbc.Connection,
+) -> None:
     cursor = conn.cursor()
 
-    cursor.execute("EXEC dbo.SyncGroupMemberships;")
+    try:
+        cursor.execute("EXEC dbo.SyncGroupMemberships;")
+    finally:
+        cursor.close()
 
-    conn.commit()
+def initialize_group_members_history_stream(
+    conn: pyodbc.Connection,
+) -> None:
+    config = get_table_config("group_members_history")
+    staging_table = config["staging_table"]
+
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            build_truncate_sql(staging_table)
+        )
+        conn.commit()
+
+        logging.info(
+            "Initialized group membership history stream by "
+            "truncating staging table '%s'.",
+            staging_table,
+        )
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        cursor.close()
+
+
+def finalize_group_members_history_stream(
+    conn: pyodbc.Connection,
+) -> None:
+    config = get_table_config("group_members_history")
+    staging_table = config["staging_table"]
+
+    cursor = conn.cursor()
+
+    try:
+        logging.info(
+            "Executing SyncGroupMemberships after all membership "
+            "history chunks were staged."
+        )
+
+        cursor.execute("EXEC dbo.SyncGroupMemberships;")
+
+        cursor.execute(
+            build_truncate_sql(staging_table)
+        )
+
+        conn.commit()
+
+        logging.info(
+            "Finished SyncGroupMemberships and cleared staging table '%s'.",
+            staging_table,
+        )
+
+    except Exception:
+        conn.rollback()
+
+        logging.exception(
+            "Failed to finalize streamed group membership history."
+        )
+
+        raise
+
+    finally:
+        cursor.close()
 
 
 def process_table(
@@ -648,15 +854,12 @@ def process_table(
         )
 
         phase = "upserting staging data into target table"
-        if table_name == "group_members_history":
-            stored_proc(conn=conn)
-        else:
-            upsert_from_staging(
-                conn=conn,
-                table_name=table_name,
-                config=config,
-                group_name=group_name,
-            )
+        upsert_from_staging(
+            conn=conn,
+            table_name=table_name,
+            config=config,
+            group_name=group_name,
+        )
 
         phase = "committing transaction"
         conn.commit()
@@ -759,40 +962,151 @@ def uploader_from_stream(table_batches, endpoint) -> None:
     conn = None
     group_name = None
 
+    is_groups_stream = endpoint == "groups"
+    history_staging_initialized = False
+    history_row_count = 0
+    stream_completed = False
+
     try:
         conn = get_connection()
 
-        for batch_index, table_batch in enumerate(table_batches, start=1):
+        # Clear membership-history staging exactly once before
+        # consuming any Groups chunks.
+        if is_groups_stream:
+            initialize_group_members_history_stream(conn)
+            history_staging_initialized = True
+
+        for batch_index, table_batch in enumerate(
+            table_batches,
+            start=1,
+        ):
             if not isinstance(table_batch, dict):
-                raise TypeError("table batches must be dictionaries like {'people_core': records}.")
+                raise TypeError(
+                    "Table batches must be dictionaries like "
+                    "{'people_core': records}."
+                )
 
-            logging.info("Starting stream batch %d with %d table(s).", batch_index, len(table_batch))
+            logging.info(
+                "Starting stream batch %d with %d table(s).",
+                batch_index,
+                len(table_batch),
+            )
 
-            for table_name in list(table_batch):
-                rows = table_batch.pop(table_name)
-                logging.info("Processing stream batch %d -> table '%s' with %d rows.", batch_index, table_name, len(rows))
+            try:
+                for table_name, rows in table_batch.items():
+                    if not rows:
+                        logging.info(
+                            "Skipping empty stream batch %d "
+                            "-> table '%s'.",
+                            batch_index,
+                            table_name,
+                        )
+                        continue
 
-                try:
-                    process_table(
-                        conn=conn,
-                        table_name=table_name,
-                        raw_records=rows,
-                        group_name=group_name,
+                    logging.info(
+                        "Processing stream batch %d "
+                        "-> table '%s' with %d rows.",
+                        batch_index,
+                        table_name,
+                        len(rows),
                     )
-                    logging.info("Finished stream batch %d -> table '%s'.", batch_index, table_name)
-                finally:
-                    if rows is not None:
+
+                    try:
+                        if table_name == "group_members_history":
+                            if not is_groups_stream:
+                                raise ValueError(
+                                    "Received group_members_history for "
+                                    f"endpoint '{endpoint}'."
+                                )
+
+                            loaded_count = (
+                                stage_group_members_history_chunk(
+                                    conn=conn,
+                                    records=rows,
+                                )
+                            )
+
+                            history_row_count += loaded_count
+
+                        else:
+                            process_table(
+                                conn=conn,
+                                table_name=table_name,
+                                raw_records=rows,
+                                group_name=group_name,
+                            )
+
+                        logging.info(
+                            "Finished stream batch %d "
+                            "-> table '%s'.",
+                            batch_index,
+                            table_name,
+                        )
+
+                    finally:
                         rows.clear()
-                        del rows
 
-            logging.info("Completed stream batch %d.", batch_index)
+            finally:
+                table_batch.clear()
 
-        update_delta_record(conn, endpoint)
+            logging.info(
+                "Completed stream batch %d.",
+                batch_index,
+            )
+
+        # This is reached only if the extraction iterator completed
+        # successfully without raising an exception.
+        stream_completed = True
+
+        if is_groups_stream:
+            if history_row_count == 0:
+                raise RuntimeError(
+                    "The Groups extraction completed without producing "
+                    "any group_members_history rows. "
+                    "SyncGroupMemberships was not executed because an "
+                    "empty staging table could mark every active "
+                    "membership as having left."
+                )
+
+            logging.info(
+                "All Groups chunks completed successfully. "
+                "Finalizing %d staged membership-history rows.",
+                history_row_count,
+            )
+
+            finalize_group_members_history_stream(conn)
+
+        update_delta_record(
+            conn=conn,
+            endpoint=endpoint,
+        )
+
+    except Exception:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                logging.exception(
+                    "Failed to roll back streamed upload."
+                )
+
+        logging.exception(
+            "Streamed upload failed | "
+            "Endpoint=%s | "
+            "StreamCompleted=%s | "
+            "HistoryStagingInitialized=%s | "
+            "HistoryRowsStaged=%d",
+            endpoint,
+            stream_completed,
+            history_staging_initialized,
+            history_row_count,
+        )
+
+        raise
 
     finally:
         if conn is not None:
             conn.close()
-
 
 def uploader(tables: Dict[str, Any], endpoint) -> None:
     if not isinstance(tables, dict):
