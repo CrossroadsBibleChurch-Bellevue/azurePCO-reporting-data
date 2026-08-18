@@ -99,18 +99,6 @@ def validate_input_sizes(
             f"Input sizes: {input_sizes!r}"
         )
 
-    for position, (column, input_size) in enumerate(
-        zip(columns, input_sizes)
-    ):
-        logging.info(
-            "INPUT SIZE POSITION | Table=%s | Position=%d | "
-            "Column=%s | InputSize=%r",
-            table_name,
-            position,
-            column,
-            input_size,
-        )
-
 
 
 def normalize_records(records: Any) -> List[Dict[str, Any]]:
@@ -686,11 +674,6 @@ def stage_group_members_history_chunk(
     # throughout the entire Groups extraction.
     conn.commit()
 
-    logging.info(
-        "Appended %d group membership history rows to staging.",
-        loaded_count,
-    )
-
     return loaded_count
 
 
@@ -764,12 +747,6 @@ def initialize_group_members_history_stream(
         )
         conn.commit()
 
-        logging.info(
-            "Initialized group membership history stream by "
-            "truncating staging table '%s'.",
-            staging_table,
-        )
-
     except Exception:
         conn.rollback()
         raise
@@ -787,11 +764,6 @@ def finalize_group_members_history_stream(
     cursor = conn.cursor()
 
     try:
-        logging.info(
-            "Executing SyncGroupMemberships after all membership "
-            "history chunks were staged."
-        )
-
         cursor.execute("EXEC dbo.SyncGroupMemberships;")
 
         cursor.execute(
@@ -799,11 +771,6 @@ def finalize_group_members_history_stream(
         )
 
         conn.commit()
-
-        logging.info(
-            "Finished SyncGroupMemberships and cleared staging table '%s'.",
-            staging_table,
-        )
 
     except Exception:
         conn.rollback()
@@ -838,11 +805,6 @@ def process_table(
         phase = "validating records"
         validate_records(table_name, records, config)
 
-        logging.info(
-            "Processing table '%s' with %d records...",
-            table_name,
-            len(records),
-        )
 
         phase = "loading staging table"
         loaded_count = load_staging(
@@ -865,13 +827,6 @@ def process_table(
         conn.commit()
 
         elapsed = time.perf_counter() - start_time
-
-        logging.info(
-            "Finished table '%s'. Loaded %d records. Elapsed: %.2f seconds.",
-            table_name,
-            loaded_count,
-            elapsed,
-        )
 
     except Exception as error:
         elapsed = time.perf_counter() - start_time
@@ -986,30 +941,12 @@ def uploader_from_stream(table_batches, endpoint) -> None:
                     "{'people_core': records}."
                 )
 
-            logging.info(
-                "Starting stream batch %d with %d table(s).",
-                batch_index,
-                len(table_batch),
-            )
 
             try:
                 for table_name, rows in table_batch.items():
                     if not rows:
-                        logging.info(
-                            "Skipping empty stream batch %d "
-                            "-> table '%s'.",
-                            batch_index,
-                            table_name,
-                        )
                         continue
 
-                    logging.info(
-                        "Processing stream batch %d "
-                        "-> table '%s' with %d rows.",
-                        batch_index,
-                        table_name,
-                        len(rows),
-                    )
 
                     try:
                         if table_name == "group_members_history":
@@ -1036,23 +973,11 @@ def uploader_from_stream(table_batches, endpoint) -> None:
                                 group_name=group_name,
                             )
 
-                        logging.info(
-                            "Finished stream batch %d "
-                            "-> table '%s'.",
-                            batch_index,
-                            table_name,
-                        )
-
                     finally:
                         rows.clear()
 
             finally:
                 table_batch.clear()
-
-            logging.info(
-                "Completed stream batch %d.",
-                batch_index,
-            )
 
         # This is reached only if the extraction iterator completed
         # successfully without raising an exception.
@@ -1067,12 +992,6 @@ def uploader_from_stream(table_batches, endpoint) -> None:
                     "empty staging table could mark every active "
                     "membership as having left."
                 )
-
-            logging.info(
-                "All Groups chunks completed successfully. "
-                "Finalizing %d staged membership-history rows.",
-                history_row_count,
-            )
 
             finalize_group_members_history_stream(conn)
 

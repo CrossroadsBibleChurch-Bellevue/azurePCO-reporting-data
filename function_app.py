@@ -12,17 +12,17 @@ from orchestrators.groups_orchestrator_attendance import main as groups_attendan
 
 
 # This is the start of the Azure Function. From here is where the actual code is called.
-# Currently, there are two main functions/processes that get called and run, deep_data_extraction and regular_data_extraction
-# Deep data extraction does full refreshes for everything, running once per month, fetching all the data again and then upserting to the database to ensure complete records and that nothing was missed
-# Currently I am using three different functions to perform the deep data refresh, mainly because having all of them in the same call was too hard on the server it was on
-# Regular data extraction does delta refreshes and runs once per day. It aims to get only the most recently updated data since the last data fetch
+# Currently, there are two main processes that get called and run, delta_data_extraction and then all the others.
+# All the non-delta fetches do full refreshes for everything, running once per month, fetching all the data again and then upserting to the database to ensure complete records and that nothing was missed
+# The reason each one is split up is because Azure Function tends to end functions over an hour long so it wouldn't finish, which is why they are split up.
+# Delta data extraction does delta refreshes and runs once per day. It aims to get only the most recently updated data since the last data fetch
 # When adding new modules for API endpoints that are not currently fetched, follow a similar structure to before, so that there is a full and delta refresh
 # When the extractions occur is set by the app timer trigger schedule. It is in NCRON format, which can be read easily online.
 # I use https://ncrontab.swimburger.net/, which shows the next times they will occur, and also can be used to find ideal schedules.
 # For each endpoint the general structure used is the following. An orchestrator that these functions call, which then calls the extractor that actually gets the data, then pushes it to the uploader to then get upsert into the database.
 # Also make sure if adding any environmental variables to add those in the Azure Function and if adding imports add those imports into requirements.txt
 
-# 08/18/2026 v5
+# 08/18/2026 v6
 
 app = func.FunctionApp()
 
