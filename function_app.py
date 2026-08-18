@@ -8,6 +8,7 @@ from orchestrators.groups_orchestrator_delta import main as groups_delta
 from orchestrators.check_ins_orchestrator_delta import main as checkins_delta
 from orchestrators.check_ins_orchestrator_full import main as checkins_full
 from orchestrators.registrations_orchestrator_full import main as registrations_full
+from orchestrators.groups_orchestrator_attendance import main as groups_attendance
 
 
 # This is the start of the Azure Function. From here is where the actual code is called.
@@ -21,7 +22,7 @@ from orchestrators.registrations_orchestrator_full import main as registrations_
 # For each endpoint the general structure used is the following. An orchestrator that these functions call, which then calls the extractor that actually gets the data, then pushes it to the uploader to then get upsert into the database.
 # Also make sure if adding any environmental variables to add those in the Azure Function and if adding imports add those imports into requirements.txt
 
-# 08/17/2026 v3
+# 08/18/2026 v5
 
 app = func.FunctionApp()
 
@@ -32,12 +33,17 @@ def people_full_extraction(myTimer: func.TimerRequest) -> None:
     #extractor_calendar(client)
     deep_extractor_people()
 
-@app.timer_trigger(schedule="0 10 18 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 0 2 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def groups_full_extraction(myTimer: func.TimerRequest) -> None:
     groups_full_refresh()
 
-@app.timer_trigger(schedule="0 45 7 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 30 3 */1 * *", arg_name="myTimer", run_on_startup=True,
+              use_monitor=False) 
+def groups_attendance_extraction(myTimer: func.TimerRequest) -> None:
+    groups_attendance()
+
+@app.timer_trigger(schedule="0 0 6 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def checkins_full_extraction(myTimer: func.TimerRequest) -> None:
     checkins_full()
@@ -47,7 +53,7 @@ def checkins_full_extraction(myTimer: func.TimerRequest) -> None:
 def registrations_extraction(myTimer: func.TimerRequest) -> None:
     registrations_full()
 
-@app.timer_trigger(schedule="0 0 0 */1 * *", arg_name="myTimer", run_on_startup=False,
+@app.timer_trigger(schedule="0 30 0 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def delta_data_extraction(myTimer: func.TimerRequest) -> None:
     updates_extractor_people()

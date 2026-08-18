@@ -40,3 +40,19 @@ def fetch_updated_at_checkins():
         
         if conn is not None:
             conn.close()
+
+def fetch_instances() -> list:
+    connection = get_connection()
+
+    try:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT EventInstanceID
+            FROM dbo.PCO_Groups_Event_Instances
+            WHERE EventInstanceID IS NOT NULL;
+        """)
+
+        return [row.EventInstanceID for row in cursor.fetchall()]
+
+    finally:
+        connection.close()
