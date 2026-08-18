@@ -5,3 +5,6 @@ To run this, clone the repo and then make sure to create the .env file from the 
 When adding a new endpoint from PCO for usage, follow the structures used by the other endpoints, adding to table configs, create an orchestrator and extractor, and adding the necessary entry in the SQL as well as update in loader if doing a delta refresh.
 
 In this repo, there are more detailed README files in each folder going into what each file does, and then each file has some documentation that should in theory explain usage.
+
+
+TODO: Make groups push all data except for attendances then have seperate function fetch all event instances from SQL and then get attendance data from that

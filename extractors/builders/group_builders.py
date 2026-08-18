@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
 
-from utils.time_functions import now_utc, parse_pco_datetime
+from utils.time_functions import now_utc, parse_pco_datetime, convert_output_datetimes_to_local_sql
 from utils.hasher import stable_hash_id
 
 # This file is used by both groups extractors to take the raw data from the API and then parse and turn into rows/tables that can be used by the loader to input data into the database.
@@ -199,18 +199,20 @@ def build_event_instances_table_rows(
 ) -> List[Dict[str, Any]]:
     rows = []
 
+    convert_output_datetimes_to_local_sql(events)
+
     for event in events:
         rows.append(
             {
-                "event_instance_id": event.get("id"),
-                "event_id": event.get("parent_event_id"),
-                "group_id": event.get("group_id"),
+                "event_instance_id": int(event.get("id")),
+                "event_id": int(event.get("parent_event_id")),
+                "group_id": int(event.get("group_id")),
                 "name": event.get("name"),
                 "starts_at": event.get("starts_at"),
                 "ends_at": event.get("ends_at"),
                 "canceled": event.get("canceled"),
                 "visitors_count": event.get("visitors_count"),
-                "location_id": event.get("location_id"),
+                "location_id": int(event.get("location_id")) if event.get("location_id") is not None else None,
                 "classification": event.get(
                     "event_time_classification"
                 ),
