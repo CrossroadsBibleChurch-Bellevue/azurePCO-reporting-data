@@ -75,7 +75,3 @@ Some errors that I encountered a lot occurs when trying to use fast_executemany 
 Another error is very similar. Basically gets given ID's that Python has as Strings but SQL has as INT, because it is trying to upsert quickly, SQL fails and throws an error. Just make sure the IDs are INTs and not Strings.
 An error I got once or twice was again caused by fast_executemany where the first value or two was None so it assumed thats what they all should be and thus failed when given a non-None value. This was fixed by using set input_sizes in table_configs. There is an example of this with the signup and checkins_events table. I would recommend getting AI's help in determining those for the table.
 With Azure Function there is an error where the function will just stop after about 60 minutes, and you get no error message. To solve this I just split the functions up so it didn't take as long. It's a little scuffed but it works.
-
-
-Summary of main important files
-How to implement giving basically
