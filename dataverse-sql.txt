@@ -1,5 +1,0 @@
-Upserting only core attributes for 3 days worth of data takes 144 seconds to dataverse and 14 seconds to SQL
-Upserting all data for 3 days worth takes 600 seconds to dataverse and takes 18 seconds to SQL
-Upserting all data for the past month takes a whopping 1386 seconds to upserting to dataverse and only 46 seconds to SQL, most of which is getting data, taking 38 seconds, upserting only takes 7.5 seconds
-To upsert all the data from the people API takes 2.8 hours to upsert to dataverse, while upserting into SQL takes only 585 seconds, the majority of which is getting the data (316 extract, 269 upsert)
-About 100 seconds faster to do a full refresh with 2 vCPU cores compared to 1 vCPU core

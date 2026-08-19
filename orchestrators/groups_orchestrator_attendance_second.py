@@ -8,7 +8,7 @@ from database.fetch_record import fetch_instances
 # This is the orchestrator for the Groups endpoint, full refresh. As you can see, it isn't much.
 # Just runs the extractor and then gives that data to the uploader in batches. Also makes sure the server is awake for when data needs to be pushed.
 
-event_instance_ids = fetch_instances()
+event_instance_ids = fetch_instances("second_call")
 
 
 def main():

@@ -41,7 +41,7 @@ def fetch_updated_at_checkins():
         if conn is not None:
             conn.close()
 
-def fetch_instances() -> list:
+def fetch_instances(function_call) -> list:
     connection = get_connection()
 
     try:
@@ -51,8 +51,15 @@ def fetch_instances() -> list:
             FROM dbo.PCO_Groups_Event_Instances
             WHERE EventInstanceID IS NOT NULL;
         """)
-
-        return [row.EventInstanceID for row in cursor.fetchall()]
+        event_instance_ids = [row.EventInstanceID for row in cursor.fetchall()]
+        length = len(event_instance_ids)//2
+        if function_call == "first_call":
+            event_instance_ids = event_instance_ids[:length]
+            return event_instance_ids
+        else:
+            event_instance_ids = event_instance_ids[length:]
+            return event_instance_ids
+            
 
     finally:
         connection.close()

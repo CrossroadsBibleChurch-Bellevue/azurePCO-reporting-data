@@ -1,0 +1,1 @@
+This directory contains old files not really used anymore. groups_extractor_full was used when I thought everything could be fetched in one function, but it can't because of time constraints.
