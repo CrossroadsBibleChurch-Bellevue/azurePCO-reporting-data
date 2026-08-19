@@ -38,7 +38,7 @@ def people_full_extraction(myTimer: func.TimerRequest) -> None:
 def groups_full_extraction(myTimer: func.TimerRequest) -> None:
     groups_full_refresh()
 
-@app.timer_trigger(schedule="0 30 3 */1 * *", arg_name="myTimer", run_on_startup=True,
+@app.timer_trigger(schedule="0 30 3 */1 * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
 def groups_attendance_extraction(myTimer: func.TimerRequest) -> None:
     groups_attendance()
